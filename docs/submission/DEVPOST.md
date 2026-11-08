@@ -1,6 +1,6 @@
 # Devpost draft — PromiseTrace
 
-> Draft for the author's review. Items marked **[fill]** depend on runs that have not happened yet. Do not submit with placeholders.
+> Draft for the author's review. Add the YouTube link and repository URL before submitting.
 
 ## Tagline
 
@@ -59,7 +59,7 @@ Chargeflow assembles dispute evidence for SaaS and e-commerce from business data
 
 ## Built with
 
-Claude (Anthropic API), PayPal Checkout / Orders v2 / Webhooks (sandbox), Next.js, TypeScript, Prisma, SQLite/libSQL, Better Auth, Zod, Tailwind CSS, Vitest, Playwright, Render [if hosted].
+Claude (Anthropic API), PayPal Checkout / Orders v2 / Webhooks (sandbox), Next.js, TypeScript, Prisma, SQLite/libSQL, Better Auth, Zod, Tailwind CSS, Vitest, Playwright, Vercel, Turso.
 
 ## AI tools used
 
