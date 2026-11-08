@@ -1,0 +1,307 @@
+// PromiseTrace data model.
+// Records are append-only where they act as evidence: source documents, brief
+// versions, approvals, payments, deliveries, checks, buyer actions and events
+// are never edited in place. Pre-payment edits create a new brief version.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ---------- Better Auth tables ----------
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  sellerDeals Deal[] @relation("DealSeller")
+  buyerDeals  Deal[] @relation("DealBuyer")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ---------- PromiseTrace domain ----------
+
+model Deal {
+  id               String    @id @default(cuid())
+  title            String
+  sellerId         String
+  seller           User      @relation("DealSeller", fields: [sellerId], references: [id])
+  buyerId          String?
+  buyer            User?     @relation("DealBuyer", fields: [buyerId], references: [id])
+  inviteTokenHash  String?   @unique
+  inviteExpiresAt  DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  sources      SourceDocument[]
+  versions     BriefVersion[]
+  payments     Payment[]
+  deliveries   Delivery[]
+  buyerActions BuyerAction[]
+  events       Event[]
+  aiRuns       AiRun[]
+
+  @@index([sellerId])
+  @@index([buyerId])
+}
+
+/// Pasted brief or conversation. Immutable; claims point into `text` by offsets.
+model SourceDocument {
+  id          String   @id @default(cuid())
+  dealId      String
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  label       String   // e.g. "S1"
+  kind        String   // PASTED_BRIEF | CONVERSATION | PDF_TEXT
+  title       String
+  text        String
+  sha256      String
+  addedById   String
+  createdAt   DateTime @default(now())
+
+  @@unique([dealId, label])
+}
+
+/// One immutable version of the structured brief.
+model BriefVersion {
+  id              String    @id @default(cuid())
+  dealId          String
+  deal            Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  number          Int
+  kind            String    // ORIGINAL | AMENDMENT
+  origin          String    // AI_PROPOSED | EDITED | MANUAL
+  parentVersionId String?
+  content         String    // canonical JSON of BriefContent
+  contentHash     String    // sha256 of canonical JSON
+  createdById     String
+  aiRunId         String?
+  createdAt       DateTime  @default(now())
+  supersededAt    DateTime?
+  lockedAt        DateTime? // set when a payment for this version is confirmed COMPLETED
+
+  approvals Approval[]
+  payments  Payment[]
+
+  @@unique([dealId, number])
+  @@index([dealId])
+}
+
+model Approval {
+  id          String       @id @default(cuid())
+  versionId   String
+  version     BriefVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  userId      String
+  role        String       // SELLER | BUYER
+  contentHash String
+  createdAt   DateTime     @default(now())
+
+  @@unique([versionId, userId])
+}
+
+model Payment {
+  id                  String       @id @default(cuid())
+  dealId              String
+  deal                Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  versionId           String
+  version             BriefVersion @relation(fields: [versionId], references: [id])
+  versionHash         String
+  mode                String       // SANDBOX | FIXTURE
+  amountMinor         Int
+  currency            String
+  invoiceId           String       @unique
+  customId            String
+  createRequestId     String       @unique
+  captureRequestId    String       @unique
+  paypalOrderId       String?      @unique
+  orderStatus         String?      // PayPal order status as last observed
+  status              String       // INITIATED | ORDER_CREATED | CAPTURE_PENDING | COMPLETED | DECLINED | FAILED | REFUNDED | PARTIALLY_REFUNDED | REVERSED | MISMATCH | ABANDONED
+  statusReason        String?
+  captureId           String?      @unique
+  captureStatus       String?
+  grossValue          String?
+  feeValue            String?
+  netValue            String?
+  payerIdHash         String?
+  lastPaypalDebugId   String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  completedAt         DateTime?
+
+  @@index([dealId])
+}
+
+model WebhookEvent {
+  id             String    @id // PayPal event id
+  eventType      String
+  resourceType   String?
+  resourceId     String?
+  transmissionId String?
+  verified       Boolean
+  verifyMethod   String    // SELF | FIXTURE
+  outcome        String    // APPLIED | IGNORED | NO_MATCH | REJECTED
+  note           String?
+  receivedAt     DateTime  @default(now())
+  processedAt    DateTime?
+}
+
+model Delivery {
+  id          String         @id @default(cuid())
+  dealId      String
+  deal        Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  number      Int
+  versionId   String
+  note        String
+  submittedById String
+  submittedAt DateTime       @default(now())
+  files       DeliveryFile[]
+  checks      CheckResult[]
+
+  @@unique([dealId, number])
+}
+
+model DeliveryFile {
+  id             String   @id @default(cuid())
+  deliveryId     String
+  delivery       Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  deliverableKey String
+  originalName   String
+  sizeBytes      Int
+  sha256         String
+  detectedType   String   // png | svg | pdf | jpeg | zip | unknown
+  declaredExt    String
+  widthPx        Int?
+  heightPx       Int?
+  safetyNotes    String   // JSON array of strings
+  receivedAt     DateTime @default(now())
+  blob           FileBlob?
+}
+
+model FileBlob {
+  fileId String       @id
+  file   DeliveryFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  data   Bytes
+}
+
+/// Deterministic check snapshot computed when a delivery is submitted.
+model CheckResult {
+  id             String   @id @default(cuid())
+  deliveryId     String
+  delivery       Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  requirementKey String
+  checkType      String   // FILE_FORMAT | FILE_COUNT | DEADLINE | REVISION_ALLOWANCE
+  result         String   // PASS | FAIL | NEEDS_REVIEW | NOT_CHECKABLE
+  expected       String
+  observed       String
+  createdAt      DateTime @default(now())
+}
+
+model BuyerAction {
+  id             String   @id @default(cuid())
+  dealId         String
+  deal           Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  deliveryId     String?
+  userId         String
+  type           String   // ACKNOWLEDGE_RECEIPT | ACCEPT | REQUEST_REVISION | REPORT_PROBLEM | WITHDRAW_OBJECTION
+  message        String
+  requirementKeys String  // JSON array
+  refersToId     String?  // for WITHDRAW_OBJECTION
+  createdAt      DateTime @default(now())
+
+  @@index([dealId])
+}
+
+model AiRun {
+  id             String   @id @default(cuid())
+  dealId         String?
+  deal           Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  purpose        String   // EXTRACT_BRIEF | EVAL
+  provider       String   // anthropic | fixture
+  model          String
+  status         String   // OK | INVALID_OUTPUT | ERROR | REFUSED | BUDGET_BLOCKED
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  costUsdMicros  Int      @default(0)
+  latencyMs      Int      @default(0)
+  validation     String   // JSON report: rejected claims, invalid refs
+  error          String?
+  createdAt      DateTime @default(now())
+}
+
+/// Append-only, hash-chained history. `kind` separates what a system confirmed,
+/// what a person declared and what an AI interpreted.
+model Event {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  seq       Int
+  type      String
+  kind      String   // SYSTEM_CONFIRMED | PAYPAL_CONFIRMED | USER_DECLARATION | AI_INTERPRETATION
+  actorId   String?
+  actorRole String?  // SELLER | BUYER | SYSTEM | PAYPAL | AI
+  summary   String
+  data      String   // JSON
+  prevHash  String
+  hash      String
+  createdAt DateTime @default(now())
+
+  @@unique([dealId, seq])
+}

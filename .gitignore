@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+# next
+.next/
+out/
+next-env.d.ts
+# env / secrets (never commit)
+.env
+.env.local
+.env.*.local
+!.env.example
+# local data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/storage/
+/src/generated/
+# test output
+/test-results/
+/playwright-report/
+/coverage/
+/eval/results/*.raw.json
+# misc
+*.log
+.DS_Store
+*.tsbuildinfo
