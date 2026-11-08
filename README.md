@@ -27,6 +27,10 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 | Synthetic extraction benchmark | Baseline + 2 Claude runs (precision 1.00, recall 0.95–0.97) | [docs/EVALUATION.md](docs/EVALUATION.md) |
 | Customer interviews | **Not done** — script only | [docs/INTERVIEW_SCRIPT.md](docs/INTERVIEW_SCRIPT.md) |
 
+## Try the hosted demo
+
+**https://promisetrace.vercel.app** — PayPal **sandbox** and Claude live; fictional data only. Demo logins are listed below. To pay, use a PayPal sandbox buyer account or the sandbox "Debit or Credit Card" option with a PayPal-published test card (for example Visa 4012 8888 8888 1881, any future expiry, any CVV). No real money moves.
+
 ## Run it locally (Windows, macOS or Linux)
 
 Requirements: Node.js 20.19+ (tested on Node 24.14, Windows 11).

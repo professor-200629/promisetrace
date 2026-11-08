@@ -72,6 +72,22 @@ Issues found during the live run and fixed:
 - A machine-wide `ANTHROPIC_BASE_URL` (a local proxy left by another tool) redirected the Anthropic SDK; the app now sets its API base URL explicitly (`AI_BASE_URL`).
 - `next dev` entered a hot-reload loop in one long-lived Chrome tab after the server was restarted; the live run used the production build (`npm run build && npm start`). Not yet root-caused.
 
+## 5b. Hosted deployment (Vercel + Turso), 8 Nov 2026
+
+URL: https://promisetrace.vercel.app (Vercel Hobby, region iad1; database: Turso libSQL in AWS us-east-1; migrations applied with `scripts/migrate-libsql.ts`; fictional demo accounts seeded).
+
+| Check (no login) | Result |
+|---|---|
+| `/`, `/about`, `/sign-in`, `/sign-up`, `/setup` | 200 |
+| `/api/health` | 200 `{"status":"ok","db":"ok","paypal":"ready","ai":"ready"}` |
+| `/deals` signed out | 307 to `/sign-in?next=/deals` |
+| `/api/files/:id` signed out | 401 |
+| Webhook POST without PayPal headers / with forged headers and a foreign cert URL | 400 / 400 ("Signature verification failed") |
+| Cross-origin POST to the order endpoint | 403 |
+| Security headers | CSP, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` present |
+
+Not yet run on the hosted site: the logged-in journey and a real signed sandbox webhook (needs `PAYPAL_WEBHOOK_ID`).
+
 ## 6. Live AI
 
 | Run | Status |
