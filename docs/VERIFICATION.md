@@ -50,9 +50,27 @@ Steps: seller signs up → creates the agreement from the fictional conversation
 
 | Run | Status |
 |---|---|
-| `npm run paypal:check` (OAuth, create order, idempotent repeat, GET) | **Not run yet** — sandbox app credentials not configured on 8 Nov |
-| Browser checkout with a sandbox Personal buyer, capture COMPLETED, record shows PayPal order + capture IDs | **Not run yet** |
-| Signed sandbox webhook received and verified | **Not run yet** — needs a public HTTPS URL and `PAYPAL_WEBHOOK_ID` |
+| `npm run paypal:check` (OAuth, create order, idempotent repeat, GET) | **Pass, 8 Nov 2026**: OAuth token in 2.0 s; order `3XR94915XJ8075621` created; the same `PayPal-Request-Id` returned the **same** order; GET shows 1.00 USD, our `custom_id`, approval link on `www.sandbox.paypal.com`. |
+| Full browser journey against the live sandbox (production build, real Claude, Chrome) | **Pass, 8 Nov 2026, 16:42–16:56 UTC** — see below. |
+| `npm run paypal:verify` (re-read order and capture from PayPal, compare with the stored record) | **Pass**: order `8B294411574047320` COMPLETED; capture `096203045U497594X` COMPLETED, 300.00 USD, `invoice_id` `PT-77b8748d-mw82ikfx`, `custom_id` `pt:cmw8293rs0000dcuucp7aeb1n:v2`; gross 300.00 / fee 14.16 / net 285.84; "MATCH". |
+| Buyer paying with a sandbox **PayPal account** (wallet login in the popup) | **Not run.** The live payment used PayPal's **guest card** checkout with PayPal's published sandbox test Visa (4012 8888 8888 1881) and fictional billing details, because both sandbox test accounts on this developer account are in India (PayPal India does not support India-to-India payments) and creating a US test account needs the account owner. Same server-side order/capture path. |
+| Signed sandbox webhook received and verified | **Not run yet** — needs a public HTTPS URL and `PAYPAL_WEBHOOK_ID` (hosted demo). Signature verification is covered by the unit test with a throwaway certificate. |
+
+### Live sandbox journey, 8 Nov 2026 (record exported to `docs/sample-evidence/northwind-live-sandbox.{json,html}`)
+
+Merchant: the developer account's default sandbox Business account (region IN). Buyer: guest card checkout as above.
+
+1. Seller created the agreement from the fictional email; **Claude** (`claude-opus-5-5`, 3,077 + 605 tokens, $0.0244, 6.0 s) proposed version 1: 300.00 USD, 2026-11-20 17:00 America/New_York, 2 revisions, 2 × PNG concepts, final PNG + SVG, and a "colour palette suggestion" marked ambiguous; 12/12 claims kept with verified passages. It asked whether the palette is included and whether the 12 Nov concept date has a time.
+2. Buyer joined by invite, resolved both questions (version 2), both approved version 2 (hash `7e6d2b1eb1…`).
+3. Buyer paid through the PayPal JS SDK; server captured: **COMPLETED**, version 2 locked.
+4. Seller delivered two concept PNGs and the final PNG → automatic checks: **Final logo files: SVG — Not met**, linked to S1 line 9.
+5. Buyer reported the problem → seller delivered the SVG → 4 checks met, 1 for the buyer to confirm (the palette, which code cannot check) → buyer accepted and withdrew the objection.
+6. History: 19 entries, hash chain intact; export contains no email addresses or payer IDs.
+
+Issues found during the live run and fixed:
+- The sandboxed preview server could not reach the internet; the app was run from the user's terminal instead.
+- A machine-wide `ANTHROPIC_BASE_URL` (a local proxy left by another tool) redirected the Anthropic SDK; the app now sets its API base URL explicitly (`AI_BASE_URL`).
+- `next dev` entered a hot-reload loop in one long-lived Chrome tab after the server was restarted; the live run used the production build (`npm run build && npm start`). Not yet root-caused.
 
 ## 6. Live AI
 

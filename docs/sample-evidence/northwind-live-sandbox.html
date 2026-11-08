@@ -1,0 +1,95 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evidence record — Northwind Coffee logo package</title>
+<style>
+body{font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#17212b;max-width:1100px;margin:24px auto;padding:0 16px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px;border-bottom:1px solid #dde3e8;padding-bottom:4px}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #dde3e8;padding:6px 8px;vertical-align:top;text-align:left}th{background:#f3f5f7}
+tr.bad td{background:#fbe6e3}tr.warn td{background:#fdf6e3}blockquote{margin:4px 0;padding-left:8px;border-left:3px solid #e2b200;font-style:italic;color:#4a5560}
+code{font:12px ui-monospace,Menlo,monospace}.note{background:#f3f5f7;padding:10px 12px;border-radius:6px}pre{white-space:pre-wrap;background:#f7f8f9;padding:10px;border:1px solid #dde3e8;border-radius:6px}
+small{color:#5b6875}
+</style></head><body>
+<h1>Northwind Coffee logo package</h1>
+<p>Seller: Priya Nair (demo seller) · Buyer: Alex Rivera (demo buyer) · Agreement ID <code>cmw8293rs0000dcuucp7aeb1n</code> · Generated 2026-11-08T16:57:25.581Z</p>
+<p class="note">PromiseTrace records what was agreed, paid, delivered and stated. It does not hold funds, decide PayPal claims or guarantee PayPal Seller Protection. File hashes show whether a file changed; they do not prove the work is correct.</p>
+<h2>Payment</h2>
+<p><strong>COMPLETED</strong> — 300.00 USD · Confirmed by PayPal API<br>PayPal order <code>8B294411574047320</code> · capture <code>096203045U497594X</code> · invoice <code>PT-77b8748d-mw82ikfx</code> · custom_id <code>pt:cmw8293rs0000dcuucp7aeb1n:v2</code> · gross/fee/net 300.00/14.16/285.84 · completed 2026-11-08T16:52:08.875Z</p>
+<h2>Requirements: agreed vs observed</h2>
+<table><thead><tr><th>Requirement</th><th>Agreed (with source passage)</th><th>Observed</th><th>Result</th><th>Buyer</th></tr></thead><tbody>
+    <tr class="">
+      <td><strong>Price</strong><br><code>price</code></td>
+      <td>300.00 USD<br><small>sourced</small><blockquote>S1 [191–238]: “The price is $300 USD for the full logo package”</blockquote></td>
+      <td>Capture 096203045U497594X COMPLETED, 300.00 USD<br><small>PayPal API</small></td>
+      <td><strong>MET</strong></td>
+      <td>—</td>
+    </tr>
+    <tr class="">
+      <td><strong>Logo concepts: PNG</strong><br><code>D1:png</code></td>
+      <td>2 × Logo concepts (PNG) — expects 2 × PNG files<br><small>sourced</small><blockquote>S1 [263–330]: “You will send two logo concepts as PNG images by November 12, 2026.”</blockquote></td>
+      <td>2 × PNG received (concept-a.png, delivery 1; concept-b.png, delivery 1)<br><small>PromiseTrace checks</small></td>
+      <td><strong>MET</strong></td>
+      <td>—</td>
+    </tr>
+    <tr class="">
+      <td><strong>Final logo files: PNG</strong><br><code>D2:png</code></td>
+      <td>Final logo files (PNG, SVG) — expects 1 × PNG file<br><small>sourced</small><blockquote>S1 [351–406]: “you deliver the final logo files in PNG and SVG formats”</blockquote></td>
+      <td>1 × PNG received (northwind-final.png, delivery 1)<br><small>PromiseTrace checks</small></td>
+      <td><strong>MET</strong></td>
+      <td>Reported a problem: &quot;The SVG version we agreed on is missing. Please send it.&quot;</td>
+    </tr>
+    <tr class="">
+      <td><strong>Final logo files: SVG</strong><br><code>D2:svg</code></td>
+      <td>Final logo files (PNG, SVG) — expects 1 × SVG file<br><small>sourced</small><blockquote>S1 [351–406]: “you deliver the final logo files in PNG and SVG formats”</blockquote></td>
+      <td>1 × SVG received (northwind-final.svg, delivery 2)<br><small>PromiseTrace checks</small></td>
+      <td><strong>MET</strong></td>
+      <td>Reported a problem: &quot;The SVG version we agreed on is missing. Please send it.&quot;</td>
+    </tr>
+    <tr class="warn">
+      <td><strong>Colour palette suggestion</strong><br><code>D3:any</code></td>
+      <td>Colour palette suggestion — no file format or count agreed<br><small>needs_clarification</small><blockquote>S1 [519–604]: “Could you also suggest a colour palette? Not sure yet if that is part of the package.”</blockquote></td>
+      <td>0 file(s) attached; the buyer decides whether this is met.<br><small>PromiseTrace checks</small></td>
+      <td><strong>NOT_CHECKABLE</strong></td>
+      <td>—</td>
+    </tr>
+    <tr class="">
+      <td><strong>Deadline</strong><br><code>deadline</code></td>
+      <td>2026-11-20 17:00 America/New_York = 2026-11-20T22:00Z<br><small>sourced</small><blockquote>S1 [454–517]: “Final files are due by November 20, 2026 at 5 PM New York time.”</blockquote></td>
+      <td>All checkable files present at 2026-11-08T16:55:52Z (server time)<br><small>PromiseTrace checks</small></td>
+      <td><strong>MET</strong></td>
+      <td>—</td>
+    </tr>
+    <tr class="">
+      <td><strong>Revision rounds</strong><br><code>revisions</code></td>
+      <td>2 included<br><small>sourced</small><blockquote>S1 [410–451]: “The package includes two revision rounds.”</blockquote></td>
+      <td>0 revision requests recorded<br><small>Nothing yet</small></td>
+      <td><strong>PENDING</strong></td>
+      <td>—</td>
+    </tr></tbody></table>
+<p><small>Open buyer objections: 0</small></p>
+<h2>Deliveries</h2>
+<h3>Delivery 1 — received 2026-11-08T16:54:08.385Z</h3><p>Seller's statement: “Hi Alex, here are the two concepts and the final logo. Thanks!”</p><table><thead><tr><th>File</th><th>For</th><th>Detected type</th><th>Bytes</th><th>SHA-256</th><th>Notes</th></tr></thead><tbody><tr><td>concept-a.png</td><td>D1</td><td>png</td><td>6767</td><td><code>9c50b1e24f6bc081307aa33689f89aea5a6e08e6c6f3c6c78e12672e3649d118</code></td><td></td></tr><tr><td>concept-b.png</td><td>D1</td><td>png</td><td>6474</td><td><code>c6f1a8fead2fa900be9215bc76c057ae8df6d4b5e693ab2ee75bcbca2313a325</code></td><td></td></tr><tr><td>northwind-final.png</td><td>D2</td><td>png</td><td>17786</td><td><code>5c3b6bc44e74795f7f314a8408874c1c0cc68a088f183e881cfde697cfb8def1</code></td><td></td></tr></tbody></table><h3>Delivery 2 — received 2026-11-08T16:55:52.570Z</h3><p>Seller's statement: “Sorry Alex, here is the SVG.”</p><table><thead><tr><th>File</th><th>For</th><th>Detected type</th><th>Bytes</th><th>SHA-256</th><th>Notes</th></tr></thead><tbody><tr><td>northwind-final.svg</td><td>D2</td><td>svg</td><td>620</td><td><code>6135194963aea594d5c6ee87b1e7e028e702c92141f3b5c8513e714f020d9e07</code></td><td></td></tr></tbody></table>
+<h2>Buyer statements</h2>
+<table><thead><tr><th>When</th><th>Action</th><th>Message</th><th>About</th></tr></thead><tbody><tr><td>2026-11-08T16:55:16.874Z</td><td>REPORT_PROBLEM</td><td>The SVG version we agreed on is missing. Please send it.</td><td>D2</td></tr><tr><td>2026-11-08T16:56:35.949Z</td><td>ACCEPT</td><td>Looks great, accepted. No palette needed.</td><td></td></tr><tr><td>2026-11-08T16:56:47.608Z</td><td>WITHDRAW_OBJECTION</td><td>SVG received, thanks.</td><td></td></tr></tbody></table>
+<h2>Brief versions and approvals</h2>
+<table><thead><tr><th>Version</th><th>Kind</th><th>Origin</th><th>Content hash</th><th>Approvals</th><th>State</th></tr></thead><tbody><tr><td>1</td><td>ORIGINAL</td><td>AI_PROPOSED</td><td><code>64e182b7d3724156d16d…</code></td><td>—</td><td>Superseded</td></tr><tr><td>2</td><td>ORIGINAL</td><td>EDITED</td><td><code>7e6d2b1eb17e6afd2afb…</code></td><td>SELLER 2026-11-08T16:45:25.370Z<br>BUYER 2026-11-08T16:44:52.910Z</td><td>Paid · locked</td></tr></tbody></table>
+<h2>AI usage</h2>
+<p>anthropic claude-opus-5-5 — OK, 3077+605 tokens, $0.0244, 6030 ms</p><p><small>AI output is an interpretation. Every kept value was checked by code against a quoted source passage, then approved by both participants.</small></p>
+<h2>History (hash chain intact)</h2>
+<table><thead><tr><th>#</th><th>Time (UTC)</th><th>Kind</th><th>Entry</th><th>Hash</th></tr></thead><tbody><tr><td>1</td><td>2026-11-08T16:42:38.313Z</td><td>Recorded by PromiseTrace</td><td>Seller created &quot;Northwind Coffee logo package&quot;.</td><td><code>185d9bd4a9ad34bc</code></td></tr><tr><td>2</td><td>2026-11-08T16:42:38.319Z</td><td>Stated by a participant</td><td>Seller added source S1 &quot;Email from Alex, 6 Nov 2026&quot; (618 characters).</td><td><code>bb650882ea23c2a6</code></td></tr><tr><td>3</td><td>2026-11-08T16:42:44.471Z</td><td>AI interpretation</td><td>AI proposed version 1: 12 of 12 claims kept with verified passages; 0 dropped; 0 quotes not found in the source.</td><td><code>888101fcad1d37b4</code></td></tr><tr><td>4</td><td>2026-11-08T16:44:14.122Z</td><td>Recorded by PromiseTrace</td><td>Buyer joined through the private invite link.</td><td><code>79012ff0cc75e4ae</code></td></tr><tr><td>5</td><td>2026-11-08T16:44:41.752Z</td><td>Stated by a participant</td><td>Buyer saved version 2; changed: openQuestions.</td><td><code>0e5e9f9f878bb52b</code></td></tr><tr><td>6</td><td>2026-11-08T16:44:52.962Z</td><td>Stated by a participant</td><td>Buyer approved version 2.</td><td><code>4392645c71c4b3ff</code></td></tr><tr><td>7</td><td>2026-11-08T16:45:25.377Z</td><td>Stated by a participant</td><td>Seller approved version 2.</td><td><code>936a4b840003bb4b</code></td></tr><tr><td>8</td><td>2026-11-08T16:45:25.384Z</td><td>Recorded by PromiseTrace</td><td>Both participants approved version 2 (300.00 USD). Ready for PayPal checkout.</td><td><code>ac96bf2778fc451e</code></td></tr><tr><td>9</td><td>2026-11-08T16:50:04.488Z</td><td>Confirmed by PayPal API</td><td>PayPal order 8B294411574047320 created for 300.00 USD against version 2.</td><td><code>b859234705f04eac</code></td></tr><tr><td>10</td><td>2026-11-08T16:52:08.936Z</td><td>Confirmed by PayPal API</td><td>PayPal capture 096203045U497594X COMPLETED for 300.00 USD. Version locked as the paid agreement.</td><td><code>7b8b55656a815fe4</code></td></tr><tr><td>11</td><td>2026-11-08T16:54:08.404Z</td><td>Recorded by PromiseTrace</td><td>Seller submitted delivery 1 with 3 file(s): concept-a.png (PNG, D1), concept-b.png (PNG, D1), northwind-final.png (PNG, D2).</td><td><code>118bdcd69a715a10</code></td></tr><tr><td>12</td><td>2026-11-08T16:54:08.406Z</td><td>Stated by a participant</td><td>Seller&#39;s note with delivery 1: &quot;Hi Alex, here are the two concepts and the final logo. Thanks!&quot;</td><td><code>fc08dbc207663f84</code></td></tr><tr><td>13</td><td>2026-11-08T16:54:08.448Z</td><td>Recorded by PromiseTrace</td><td>Automatic checks after delivery 1 (against version 2): 2 met, 1 not met (Final logo files: SVG), 1 need review, 1 not checkable by code.</td><td><code>021f885091c42630</code></td></tr><tr><td>14</td><td>2026-11-08T16:55:16.926Z</td><td>Stated by a participant</td><td>Buyer reported a problem for delivery 1 (about D2): &quot;The SVG version we agreed on is missing. Please send it.&quot;</td><td><code>ca6d0ce2d8aca84a</code></td></tr><tr><td>15</td><td>2026-11-08T16:55:52.578Z</td><td>Recorded by PromiseTrace</td><td>Seller submitted delivery 2 with 1 file(s): northwind-final.svg (SVG, D2).</td><td><code>450c6750028fa0fe</code></td></tr><tr><td>16</td><td>2026-11-08T16:55:52.580Z</td><td>Stated by a participant</td><td>Seller&#39;s note with delivery 2: &quot;Sorry Alex, here is the SVG.&quot;</td><td><code>258c4bec672ae231</code></td></tr><tr><td>17</td><td>2026-11-08T16:55:52.616Z</td><td>Recorded by PromiseTrace</td><td>Automatic checks after delivery 2 (against version 2): 4 met, 0 not met, 0 need review, 1 not checkable by code.</td><td><code>44c99a63885dae3b</code></td></tr><tr><td>18</td><td>2026-11-08T16:56:35.953Z</td><td>Stated by a participant</td><td>Buyer accepted the delivery for delivery 2: &quot;Looks great, accepted. No palette needed.&quot;</td><td><code>25261b2c625c2474</code></td></tr><tr><td>19</td><td>2026-11-08T16:56:47.620Z</td><td>Stated by a participant</td><td>Buyer withdrew an earlier objection for delivery 2: &quot;SVG received, thanks.&quot;</td><td><code>56fb5ef3a3a42112</code></td></tr></tbody></table>
+<h2>Sources (stored unchanged)</h2>
+<h3>S1 — Email from Alex, 6 Nov 2026</h3><p><small>sha256 <code>6524576f63b79ea7719a0aeee16a9e46c56150477bd0b836f0fa39a4625005f5</code></small></p><pre>From: Alex Rivera (Northwind Coffee, Portland, USA)
+To: Priya Nair (independent designer, Bengaluru)
+Date: 6 November 2026
+
+Hi Priya, thanks for the call today. To confirm what we agreed:
+
+- The price is $300 USD for the full logo package, paid through PayPal.
+- You will send two logo concepts as PNG images by November 12, 2026.
+- After I pick one, you deliver the final logo files in PNG and SVG formats.
+- The package includes two revision rounds.
+- Final files are due by November 20, 2026 at 5 PM New York time.
+
+Could you also suggest a colour palette? Not sure yet if that is part of the package.
+
+Thanks,
+Alex</pre>
+</body></html>

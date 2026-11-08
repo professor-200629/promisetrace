@@ -18,7 +18,9 @@ export type SourceForAi = { label: string; title: string; text: string };
 export async function extractWithAnthropic(sources: SourceForAi[]): Promise<ProviderResult> {
   const e = env();
   const model = e.AI_MODEL;
-  const client = new Anthropic({ apiKey: e.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 180_000 });
+  // Explicit base URL: a machine-wide ANTHROPIC_BASE_URL (e.g. a local proxy used by another tool)
+  // must never silently redirect this app's requests or its API key.
+  const client = new Anthropic({ apiKey: e.ANTHROPIC_API_KEY, baseURL: e.AI_BASE_URL, maxRetries: 1, timeout: 180_000 });
   try {
     const response = await client.beta.messages.parse({
       model,
@@ -48,8 +50,11 @@ export async function extractWithAnthropic(sources: SourceForAi[]): Promise<Prov
     else if (err instanceof Anthropic.PermissionDeniedError) msg = "The Anthropic API key lacks permission for this model.";
     else if (err instanceof Anthropic.RateLimitError) msg = "Anthropic rate limit reached. Try again in a minute.";
     else if (err instanceof Anthropic.BadRequestError) msg = /credit/i.test(err.message) ? "The Anthropic account has no remaining API credit." : `Anthropic rejected the request: ${err.message.slice(0, 200)}`;
-    else if (err instanceof Anthropic.APIError) msg = `Anthropic API error ${err.status ?? ""}`.trim();
+    else if (err instanceof Anthropic.APIConnectionError) msg = `Could not reach the Anthropic API (${err.message.slice(0, 120)})`;
+    else if (err instanceof Anthropic.APIError) msg = `Anthropic API error ${err.status ?? ""}: ${err.message.slice(0, 160)}`.trim();
     else if (err instanceof Error) msg = err.message.slice(0, 200);
+    const cause = err instanceof Error && err.cause instanceof Error ? ` cause: ${err.cause.message.slice(0, 200)}` : "";
+    console.error(`[ai] extraction failed: ${err instanceof Error ? err.constructor.name : "unknown"}: ${msg}${cause}`);
     return { ok: false, status: "ERROR", error: msg, inputTokens: 0, outputTokens: 0, model, provider: "anthropic" };
   }
 }

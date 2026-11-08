@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Northwind Coffee (fictional demo logo)</title>
+  <circle cx="512" cy="512" r="368" fill="#c9a45c"/>
+  <circle cx="512" cy="512" r="316" fill="#1c3d34"/>
+  <path d="M370 470 h284 l-30 190 a40 40 0 0 1 -40 34 h-144 a40 40 0 0 1 -40 -34 z" fill="#f0e2c4"/>
+  <path d="M654 500 a52 52 0 1 1 0 104" fill="none" stroke="#f0e2c4" stroke-width="26"/>
+  <path d="M470 400 q20 -40 0 -80 M540 400 q20 -40 0 -80" fill="none" stroke="#f0e2c4" stroke-width="16" stroke-linecap="round"/>
+</svg>

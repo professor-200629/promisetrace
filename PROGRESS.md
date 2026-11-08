@@ -9,10 +9,15 @@ Deadline: Devpost submission closes **Thu 12 Nov 2026 12:00 PT = Fri 13 Nov 01:3
 - Verification: typecheck, lint, build clean; 32 Vitest tests; Playwright journey; 4 scenarios; rule-based baseline benchmark. Details: `docs/VERIFICATION.md`.
 - Docs: README, architecture, deployment (Render + Turso), evaluation, interview script, pilot hypothesis, Devpost draft, demo script, judging review.
 
+## Done (8 Nov 2026, evening)
+
+- Live Claude check + 2 benchmark runs (precision 1.00, recall 0.95-0.97, about $0.21 per run).
+- Live PayPal sandbox: paypal:check passed; full browser journey with real Claude and a COMPLETED sandbox capture (guest card, PayPal test Visa); missing SVG flagged and fixed; record exported to docs/sample-evidence/.
+- Fixed: explicit AI_BASE_URL (machine-wide ANTHROPIC_BASE_URL pointed to a dead local proxy).
+
 ## Blocked on the author
 
-1. PayPal sandbox app Client ID + Secret in `.env` → then `npm run paypal:check` and a browser checkout with the sandbox Personal buyer.
-2. Decision on the Anthropic key for runtime (reuse the existing key or provide another) → `npm run ai:check`, Claude benchmark.
+1. Optional: a US sandbox Personal account (developer dashboard) to also show the PayPal-wallet path in the video.
 3. Accounts for hosting (Render, Turso) if a hosted demo is wanted; GitHub publish approval.
 4. Recording the demo video; optional seller interviews.
 

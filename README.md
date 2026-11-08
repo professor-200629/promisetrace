@@ -20,7 +20,7 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 | Brief extraction with source validation | Built | `src/lib/ai/*`, unit tests |
 | Two-party approval and immutable versions | Built | `src/lib/services/briefs.ts`, tests |
 | PayPal order/capture/webhooks (server-side, idempotent) | Built; **mock-tested** | `src/lib/services/payments.ts`, `webhooks.ts`, 32 Vitest tests |
-| **Live PayPal sandbox payment** | See [docs/VERIFICATION.md](docs/VERIFICATION.md) | needs sandbox app credentials |
+| **Live PayPal sandbox payment** | Passed 8 Nov (guest card checkout, capture COMPLETED, re-verified via API) | [docs/VERIFICATION.md](docs/VERIFICATION.md), [sample record](docs/sample-evidence/) |
 | **Real Claude extraction** | Live run passed 8 Nov | `npm run ai:check`, [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Delivery checks, buyer actions, evidence export | Built | tests + Playwright journey |
 | Browser journey (fixture mode) | Passing | `tests/e2e/journey.spec.ts` |
@@ -75,6 +75,7 @@ Without credentials the app shows a clear **setup state**. For offline developme
 | `npm test` | Vitest: 33 unit + service-level failure cases (mock PayPal, real SQLite) |
 | `npm run test:e2e` | Playwright browser journey (run `npm run build` first; fixture mode) |
 | `npm run paypal:check` | Live sandbox: OAuth, create order, idempotent retry, read back |
+| `npm run paypal:verify` | Re-read the latest completed capture from PayPal and compare with the stored record |
 | `npm run eval -- --provider fixture` | Synthetic benchmark, rule-based baseline (free) |
 | `npm run eval -- --provider anthropic` | Synthetic benchmark with Claude (uses API credit) |
 | `npx tsx eval/scenarios.ts` | Four scripted end-to-end scenarios |

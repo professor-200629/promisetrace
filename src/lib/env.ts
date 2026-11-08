@@ -30,6 +30,7 @@ const EnvSchema = z.object({
   AI_PROVIDER: z.enum(["anthropic", "fixture"]).default("anthropic"),
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default("claude-opus-5-5"),
+  AI_BASE_URL: z.url().default("https://api.anthropic.com"),
   AI_EFFORT: z.enum(["low", "medium", "high"]).default("low"),
   AI_MAX_OUTPUT_TOKENS: intFrom(8000),
   AI_MAX_INPUT_CHARS: intFrom(20000),

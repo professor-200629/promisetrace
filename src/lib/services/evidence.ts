@@ -85,7 +85,7 @@ export async function buildView(db: Db, dealId: string, role: Role) {
         rows.push({ key: d.key, group: "Deliverables", label: d.label, agreed, agreedStatus: d.status, refs: d.refs, observed: effective ? "Nothing delivered yet" : "Checked after payment", observedBy: "Nothing yet", result: "PENDING", buyerResponse: lastBuyer([d.key]) });
       }
       for (const c of mine) {
-        rows.push({ key: c.requirementKey, group: "Deliverables", label: c.label, agreed: c.checkType === "FILE_INTEGRITY" ? c.expected : `${agreed} — expects ${c.expected}`,
+        rows.push({ key: c.requirementKey, group: "Deliverables", label: c.label, agreed: c.checkType === "FILE_INTEGRITY" ? c.expected : c.requirementKey.endsWith(":any") ? `${agreed} — no file format or count agreed` : `${agreed} — expects ${c.expected}`,
           agreedStatus: d.status, refs: d.refs, observed: c.observed, observedBy: "PromiseTrace checks",
           result: deliveries.length === 0 && c.result === "FAIL" ? "PENDING" : CHECK_TO_ROW[c.result], buyerResponse: lastBuyer([d.key]) });
       }
