@@ -86,7 +86,9 @@ URL: https://promisetrace.vercel.app (Vercel Hobby, region iad1; database: Turso
 | Cross-origin POST to the order endpoint | 403 |
 | Security headers | CSP, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` present |
 
-Not yet run on the hosted site: the logged-in journey and a real signed sandbox webhook (needs `PAYPAL_WEBHOOK_ID`).
+Sandbox webhook registered on 8 Nov 2026: ID `5KH82963RX958642Y` → `https://promisetrace.vercel.app/api/paypal/webhook`, events CHECKOUT.ORDER.APPROVED, PAYMENT.CAPTURE.COMPLETED/PENDING/DECLINED/DENIED/REFUNDED/REVERSED, CUSTOMER.DISPUTE.CREATED/UPDATED/RESOLVED; `PAYPAL_WEBHOOK_ID` set in Vercel and redeployed (`/setup` shows it set).
+
+Not yet run on the hosted site: the logged-in journey, and therefore a real signed webhook delivery (an API-only probe payment is refused for this sandbox merchant: `PAYEE_NOT_ENABLED_FOR_CARD_PROCESSING`; PayPal-hosted guest checkout in the browser works).
 
 ## 6. Live AI
 
