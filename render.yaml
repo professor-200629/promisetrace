@@ -1,0 +1,41 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec).
+# Free web service + a Turso (libSQL) database for persistence, so no paid disk is needed.
+# Secrets are set in the Render dashboard (sync: false), never committed.
+services:
+  - type: web
+    name: promisetrace
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npx tsx scripts/migrate-libsql.ts && npx tsx prisma/seed.ts && npx next start
+    healthCheckPath: /about
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: APP_URL
+        sync: false # e.g. https://promisetrace.onrender.com
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false # libsql://<db>-<org>.turso.io
+      - key: DATABASE_AUTH_TOKEN
+        sync: false
+      - key: PAYPAL_MODE
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: AI_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: claude-opus-5-5
+      - key: AI_EFFORT
+        value: low
+      - key: AI_DAILY_CALL_LIMIT
+        value: "40"
