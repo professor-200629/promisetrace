@@ -90,8 +90,13 @@ export async function processVerifiedWebhook(db: Db, rawBody: string, opts: { tr
   if (type === "CHECKOUT.ORDER.APPROVED") {
     const payment = resourceId ? await db.payment.findUnique({ where: { paypalOrderId: resourceId } }) : null;
     if (!payment) return finish("NO_MATCH");
+    const fresh = await db.payment.findUnique({ where: { id: payment.id } });
+    const captured = fresh?.status === "COMPLETED";
     await db.$transaction((tx) => appendEvent(tx, { dealId: payment.dealId, type: "PAYPAL_BUYER_APPROVED", kind: "PAYPAL_CONFIRMED", actorRole: "PAYPAL",
-      summary: `PayPal reports the buyer approved order ${resourceId}. Approval is not payment; capture is still required.`, data: { orderId: resourceId, webhookEvent: body.id } }));
+      summary: captured
+        ? `Signed PayPal webhook confirms the buyer approved order ${resourceId} (the capture had already been confirmed).`
+        : `PayPal reports the buyer approved order ${resourceId}. Approval is not payment; capture is still required.`,
+      data: { orderId: resourceId, webhookEvent: body.id, alreadyCaptured: captured } }));
     return finish("APPLIED");
   }
 

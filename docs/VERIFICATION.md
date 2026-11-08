@@ -88,7 +88,18 @@ URL: https://promisetrace.vercel.app (Vercel Hobby, region iad1; database: Turso
 
 Sandbox webhook registered on 8 Nov 2026: ID `5KH82963RX958642Y` → `https://promisetrace.vercel.app/api/paypal/webhook`, events CHECKOUT.ORDER.APPROVED, PAYMENT.CAPTURE.COMPLETED/PENDING/DECLINED/DENIED/REFUNDED/REVERSED, CUSTOMER.DISPUTE.CREATED/UPDATED/RESOLVED; `PAYPAL_WEBHOOK_ID` set in Vercel and redeployed (`/setup` shows it set).
 
-Not yet run on the hosted site: the logged-in journey, and therefore a real signed webhook delivery (an API-only probe payment is refused for this sandbox merchant: `PAYEE_NOT_ENABLED_FOR_CARD_PROCESSING`; PayPal-hosted guest checkout in the browser works).
+### Hosted logged-in journey with real signed webhooks — 8 Nov 2026, 17:30–17:40 UTC
+
+On **https://promisetrace-sandbox.vercel.app** (same deployment; the user named this sandbox-labelled address for the run), demo accounts, Chrome:
+
+1. Live Claude extraction on Vercel: 3,544 tokens, about $0.0216, 4.4 s; 11/11 claims kept with verified passages; one palette question.
+2. Buyer joined by invite, resolved the question (version 2), both approved.
+3. Buyer paid through the PayPal JS SDK guest card form (PayPal test Visa): order `3YT96083VP356691S`, capture `7R669110YN260430P` **COMPLETED**, 300.00 / 14.16 / 285.84 USD.
+4. **Signed webhooks received and self-verified** (rows in the hosted `WebhookEvent` table, `verified = 1`, method SELF): `CHECKOUT.ORDER.APPROVED` (applied, recorded as a PayPal-confirmed history entry) and `PAYMENT.CAPTURE.COMPLETED` (applied idempotently: the capture was already recorded, so nothing was duplicated).
+5. Seller delivered concepts + final PNG → "Not met yet: Final logo files: SVG"; added the SVG → "4 checks met"; buyer accepted.
+6. History: 18 entries, hash chain intact.
+
+Follow-up fixed after this run: the history text for a buyer-approval webhook that arrives after the capture now says the capture was already confirmed.
 
 ## 6. Live AI
 

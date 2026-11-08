@@ -26,7 +26,7 @@ PromiseTrace turns that thread into a shared, versioned brief and follows the jo
 - **PayPal**: Orders v2 create/get/capture and Payments v2 get-capture over REST from the server, `PayPal-Request-Id` on every POST for idempotent retries, the PayPal JavaScript SDK Buttons for buyer approval, webhook self-verification (CRC32 + SHA-256 over the raw body, certificate host allowlist), deduplication by event id, and refund/reversal/dispute notifications.
 - **AI**: Claude via the official Anthropic SDK with structured outputs (Zod schema), low effort, token and daily caps, a server-side refusal fallback, and per-call token/cost/latency logging. Pasted text is treated as untrusted data.
 - **Deterministic checks**: magic-byte file typing, SVG/PDF active-content scanning, IANA timezone deadline conversion, exact minor-unit money arithmetic.
-- **Tests**: 32 Vitest tests for the failure cases (cross-user access, editing approved briefs, stale checkout versions, amount/currency tampering, capture retries, invalid/duplicate webhooks, pending capture, missing files) with a mock PayPal; a Playwright browser journey; four scripted scenarios; a synthetic extraction benchmark. Live sandbox runs: **[fill from docs/VERIFICATION.md]**.
+- **Tests**: 32 Vitest tests for the failure cases (cross-user access, editing approved briefs, stale checkout versions, amount/currency tampering, capture retries, invalid/duplicate webhooks, pending capture, missing files) with a mock PayPal; a Playwright browser journey; four scripted scenarios; a synthetic extraction benchmark. Live sandbox runs: locally and on the hosted demo, with COMPLETED captures re-verified through the PayPal API and real signed webhooks verified by the hosted app (docs/VERIFICATION.md).
 
 ## Challenges
 
@@ -68,5 +68,5 @@ Claude (Anthropic API), PayPal Checkout / Orders v2 / Webhooks (sandbox), Next.j
 
 ## Testing instructions
 
-- Hosted demo: **[fill URL]** (may take about a minute to wake). Demo accounts: `seller@demo.promisetrace.test` / `buyer@demo.promisetrace.test`, password `promisetrace-demo-2026` (fictional, test-only). PayPal sandbox buyer: **[fill sandbox personal account email + password — sandbox test account only]**.
+- Hosted demo: **https://promisetrace-sandbox.vercel.app** (PayPal sandbox + Claude live; fictional data). Demo accounts: `seller@demo.promisetrace.test` / `buyer@demo.promisetrace.test`, password `promisetrace-demo-2026` (fictional, test-only). To pay: in the PayPal window choose "Debit or Credit Card" and use PayPal's published sandbox test Visa 4012 8888 8888 1881, any future expiry, any CVV, any US billing details (no real money). PayPal sandbox buyer accounts also work.
 - Or run locally: see README (Node 20.19+, `npm install`, `npx prisma migrate deploy`, `npm run db:seed`, `npm run dev`).

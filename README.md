@@ -29,7 +29,7 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 
 ## Try the hosted demo
 
-**https://promisetrace.vercel.app** — PayPal **sandbox** and Claude live; fictional data only. Demo logins are listed below. To pay, use a PayPal sandbox buyer account or the sandbox "Debit or Credit Card" option with a PayPal-published test card (for example Visa 4012 8888 8888 1881, any future expiry, any CVV). No real money moves.
+**https://promisetrace-sandbox.vercel.app** — PayPal **sandbox** and Claude live; fictional data only. Demo logins are listed below. To pay, use a PayPal sandbox buyer account or the sandbox "Debit or Credit Card" option with a PayPal-published test card (for example Visa 4012 8888 8888 1881, any future expiry, any CVV). No real money moves.
 
 ## Run it locally (Windows, macOS or Linux)
 

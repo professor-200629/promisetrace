@@ -8,7 +8,7 @@ The README's quick start works on Windows, macOS and Linux with only Node.js. Ju
 
 ## B. Hosted demo (live): Vercel + Turso
 
-The judging build runs at **https://promisetrace.vercel.app** (Vercel Hobby, functions in iad1) with a Turso database in AWS us-east-1. Deployed with the Vercel CLI from the local checkout (`npx vercel deploy --prod`), environment variables stored in Vercel (secrets marked sensitive), migrations applied with `DATABASE_URL=<libsql url> DATABASE_AUTH_TOKEN=<token> npx tsx scripts/migrate-libsql.ts`, demo accounts with `npx tsx prisma/seed.ts`. A daily Vercel cron calls `/api/health` so the database never sits idle during judging. The Turso token expires about 6 Feb 2027 (90 days), after judging ends.
+The judging build runs at **https://promisetrace-sandbox.vercel.app** (Vercel Hobby, functions in iad1) with a Turso database in AWS us-east-1. Deployed with the Vercel CLI from the local checkout (`npx vercel deploy --prod`), environment variables stored in Vercel (secrets marked sensitive), migrations applied with `DATABASE_URL=<libsql url> DATABASE_AUTH_TOKEN=<token> npx tsx scripts/migrate-libsql.ts`, demo accounts with `npx tsx prisma/seed.ts`. A daily Vercel cron calls `/api/health` so the database never sits idle during judging. The Turso token expires about 6 Feb 2027 (90 days), after judging ends.
 
 ## C. Alternative: Render (free) + Turso (free)
 
