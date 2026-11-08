@@ -1,0 +1,376 @@
+{
+  "label": "SYNTHETIC BENCHMARK — fictional, hand-labelled briefs; not customer validation",
+  "provider": "fixture",
+  "model": "rule-based-fixture",
+  "effort": null,
+  "runs": 1,
+  "ranAt": "2026-11-08T15:58:51.182Z",
+  "summary": {
+    "all": {
+      "briefs": 10,
+      "failures": 0,
+      "precision": 0.864,
+      "recall": 0.667,
+      "wrongFactsKept": 6,
+      "invalidQuotes": 0,
+      "quotesTotal": 33,
+      "claimsDroppedByValidator": 1,
+      "ambiguityFlagged": "9/10",
+      "aiQuestionsOnCleanBriefs": 1,
+      "meanLatencyMs": 0,
+      "totalCostUsd": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    "tuning": {
+      "briefs": 4,
+      "failures": 0,
+      "precision": 0.941,
+      "recall": 0.64,
+      "wrongFactsKept": 1,
+      "invalidQuotes": 0,
+      "quotesTotal": 13,
+      "claimsDroppedByValidator": 0,
+      "ambiguityFlagged": "2/2",
+      "aiQuestionsOnCleanBriefs": 1,
+      "meanLatencyMs": 0,
+      "totalCostUsd": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    },
+    "heldout": {
+      "briefs": 6,
+      "failures": 0,
+      "precision": 0.815,
+      "recall": 0.688,
+      "wrongFactsKept": 5,
+      "invalidQuotes": 0,
+      "quotesTotal": 20,
+      "claimsDroppedByValidator": 1,
+      "ambiguityFlagged": "7/8",
+      "aiQuestionsOnCleanBriefs": 0,
+      "meanLatencyMs": 0,
+      "totalCostUsd": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0
+      }
+    }
+  },
+  "rows": [
+    {
+      "run": 0,
+      "id": "T1-logo-clean",
+      "split": "tuning",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 1,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 6,
+      "predicted": 7,
+      "expected": 9,
+      "wrongKept": [
+        "deadline.date=\"2026-11-12\" (expected \"2026-11-20\")"
+      ],
+      "missed": [
+        "deadline.date=\"2026-11-20\"",
+        "deadline.time=\"17:00\"",
+        "deadline.timezone=\"America/New_York\""
+      ],
+      "invalidQuotes": 0,
+      "quotesTotal": 5,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 0,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "T2-landing-page-vague",
+      "split": "tuning",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 2,
+      "predicted": 2,
+      "expected": 3,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 2,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [
+        {
+          "field": "deadline",
+          "flagged": true
+        },
+        {
+          "field": "revisions",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 0,
+      "cleanBrief": false
+    },
+    {
+      "run": 0,
+      "id": "T3-banners-sizes",
+      "split": "tuning",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 4,
+      "predicted": 4,
+      "expected": 7,
+      "wrongKept": [],
+      "missed": [
+        "price={\"a\":18000,\"c\":\"CAD\"}",
+        "deadline.timezone=\"America/Toronto\""
+      ],
+      "invalidQuotes": 0,
+      "quotesTotal": 3,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 1,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "T4-injection",
+      "split": "tuning",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 4,
+      "predicted": 4,
+      "expected": 6,
+      "wrongKept": [],
+      "missed": [
+        "revisionRounds=0"
+      ],
+      "invalidQuotes": 0,
+      "quotesTotal": 3,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 0,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "H1-icon-set",
+      "split": "heldout",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 6,
+      "predicted": 7,
+      "expected": 9,
+      "wrongKept": [
+        "Icons.format=pdf"
+      ],
+      "missed": [
+        "deadline.time=\"12:00\""
+      ],
+      "invalidQuotes": 0,
+      "quotesTotal": 4,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 0,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "H2-conflicting-price",
+      "split": "heldout",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 3,
+      "predicted": 4,
+      "expected": 4,
+      "wrongKept": [
+        "price={\"a\":20000,\"c\":\"USD\"} (expected null)"
+      ],
+      "missed": [
+        "deadline.timezone=\"America/New_York\""
+      ],
+      "invalidQuotes": 0,
+      "quotesTotal": 3,
+      "droppedByValidator": 1,
+      "dropped": [
+        {
+          "field": "deadline.timezone",
+          "value": "America/New_York",
+          "reason": "quoted passages do not name a timezone or city"
+        }
+      ],
+      "ambiguity": [
+        {
+          "field": "price",
+          "flagged": true
+        },
+        {
+          "field": "revisions",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 0,
+      "cleanBrief": false
+    },
+    {
+      "run": 0,
+      "id": "H3-inr-domestic",
+      "split": "heldout",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 4,
+      "predicted": 4,
+      "expected": 5,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 3,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [
+        {
+          "field": "price",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 1,
+      "cleanBrief": false
+    },
+    {
+      "run": 0,
+      "id": "H4-couple-of-concepts",
+      "split": "heldout",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 1,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 2,
+      "predicted": 2,
+      "expected": 4,
+      "wrongKept": [],
+      "missed": [
+        "deadline.timezone=\"Australia/Sydney\"",
+        "revisionRounds=2"
+      ],
+      "invalidQuotes": 0,
+      "quotesTotal": 2,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [
+        {
+          "field": "quantity",
+          "flagged": true
+        },
+        {
+          "field": "formats",
+          "flagged": false
+        }
+      ],
+      "aiQuestions": 0,
+      "cleanBrief": false
+    },
+    {
+      "run": 0,
+      "id": "H5-change-mid-thread",
+      "split": "heldout",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 5,
+      "predicted": 7,
+      "expected": 7,
+      "wrongKept": [
+        "Options.quantity=2",
+        "Options.quantity=3"
+      ],
+      "missed": [
+        "deadline.timezone=\"Asia/Singapore\""
+      ],
+      "invalidQuotes": 0,
+      "quotesTotal": 5,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 0,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "H6-no-price",
+      "split": "heldout",
+      "status": "OK",
+      "model": "rule-based-fixture",
+      "latencyMs": 0,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "costUsd": 0,
+      "tp": 2,
+      "predicted": 3,
+      "expected": 3,
+      "wrongKept": [
+        "price={\"a\":1000,\"c\":\"USD\"} (expected null)"
+      ],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 3,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [
+        {
+          "field": "price",
+          "flagged": true
+        },
+        {
+          "field": "timezone",
+          "flagged": true
+        },
+        {
+          "field": "revisions",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 0,
+      "cleanBrief": false
+    }
+  ]
+}

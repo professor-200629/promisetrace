@@ -16,13 +16,14 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "tsx scripts/reset-db.ts",
     "paypal:check": "tsx scripts/paypal-check.ts",
     "ai:check": "tsx scripts/ai-check.ts",
     "eval": "tsx eval/run-eval.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "retention": "tsx scripts/retention.ts",
+    "scenarios": "tsx eval/scenarios.ts",
+    "db:migrate": "prisma migrate deploy"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.6.0",

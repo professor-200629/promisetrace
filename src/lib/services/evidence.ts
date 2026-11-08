@@ -1,7 +1,7 @@
 import type { Db } from "@/lib/db";
 import { deadlineInstant, type BriefContent, type SourceRef } from "@/lib/brief";
 import { formatMoney } from "@/lib/money";
-import { lineOf, refIsValid } from "@/lib/sources";
+import { refIsValid } from "@/lib/sources";
 import { loadDealForUser, type Role } from "@/lib/services/access";
 import { parseContent, versionState } from "@/lib/services/briefs";
 import { paymentSummary } from "@/lib/services/payments";

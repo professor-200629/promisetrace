@@ -388,7 +388,7 @@ function RecordTab({ view }: { view: DealView }) {
           <p className="mt-2 text-xs text-muted">Current provider: {ai.state === "ready" ? ai.model : ai.state}.</p>
         </Card>
         {view.role === "SELLER" && (
-          <Card title="Delete"><DeleteDeal dealId={view.deal.id} /><p className="mt-2 text-xs text-muted">Unpaid demo data can also be removed with <code>npm run retention</code> after the retention period.</p></Card>
+          <Card title="Delete"><DeleteDeal dealId={view.deal.id} /><p className="mt-2 text-xs text-muted">Unpaid agreements older than the retention period are removed by <code>npm run retention</code>.</p></Card>
         )}
       </aside>
     </div>
