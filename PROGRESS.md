@@ -18,12 +18,11 @@ Deadline: Devpost submission closes **Thu 12 Nov 2026 12:00 PT = Fri 13 Nov 01:3
 ## Blocked on the author
 
 1. Optional: a US sandbox Personal account (developer dashboard) to also show the PayPal-wallet path in the video.
-3. Accounts for hosting (Render, Turso) if a hosted demo is wanted; GitHub publish approval.
-4. Recording the demo video; optional seller interviews.
+2. Accounts for hosting (Render, Turso) if a hosted demo is wanted; GitHub publish approval.
+3. Recording the demo video; optional seller interviews.
 
 ## Next concrete steps
 
-- Live sandbox proof → update VERIFICATION.md §5.
-- Live Claude run → EVALUATION.md.
-- Webhook test through a public URL (hosted demo) → VERIFICATION.md.
-- Screenshots for Devpost; accessibility pass; publish repo after review.
+- Hosted demo (Render + Turso) so judges can try it and so a signed sandbox webhook can be tested → VERIFICATION.md.
+- Root-cause the next dev hot-reload loop (production build works).
+- Demo video from the live sandbox; Devpost text placeholders; publish repo after review.
