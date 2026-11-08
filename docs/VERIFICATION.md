@@ -12,7 +12,7 @@ Everything here was run on the author's Windows 11 laptop (Node 24.14). "Mock" m
 
 ## 2. Automated tests (mock PayPal, real SQLite) — 8 Nov 2026
 
-`npm test` → **32 passed, 0 failed** (2 files, about 5 s).
+`npm test` → **33 passed, 0 failed** (2 files, about 5 s).
 
 Failure cases the brief asked for, and where they are tested (`tests/integration/flow.test.ts`, `tests/unit/core.test.ts`):
 
@@ -58,8 +58,8 @@ Steps: seller signs up → creates the agreement from the fictional conversation
 
 | Run | Status |
 |---|---|
-| `npm run ai:check` (one Claude extraction of the demo conversation) | **Not run yet** — `ANTHROPIC_API_KEY` not configured for this project on 8 Nov |
-| `npm run eval -- --provider anthropic` | **Not run yet** |
+| `npm run ai:check` (one Claude extraction of the demo conversation) | **Pass, 8 Nov 2026**: `claude-opus-5-5`, 8.2 s, 3,063 in + 544 out tokens (~$0.023). Price 300.00 USD, deadline 2026-11-20 17:00 America/New_York, 2 revisions, 2 × PNG concepts, final PNG + SVG — all with verified quotes (12/12 kept, 0/7 quotes invalid). It also flagged the colour palette as unclear and asked whether it is included. |
+| `npm run eval -- --provider anthropic` | **Pass, 8 Nov 2026**: two runs, see `docs/EVALUATION.md` (precision 1.00, recall 0.947 → 0.965 after one validator fix, $0.21 per run) |
 
 ## Known gaps
 

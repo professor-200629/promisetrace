@@ -29,7 +29,7 @@ export type ValidationReport = {
 };
 
 const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
-const TZ_HINTS = /\b(utc|gmt|ist|et|est|edt|ct|cst|cdt|mt|mst|mdt|pt|pst|pdt|bst|cet|cest|aest|aedt|jst|sgt|time|timezone|zone)\b/i;
+const TZ_HINTS = /\b(utc|gmt|ist|et|est|edt|ct|cst|cdt|mt|mst|mdt|pt|pst|pdt|bst|cet|cest|aest|aedt|jst|sgt|eastern|central|mountain|pacific|time|timezone|zone)\b/i;
 const CURRENCY_SYMBOLS: Record<string, string[]> = {
   USD: ["$", "usd", "us$", "dollar"], EUR: ["€", "eur", "euro"], GBP: ["£", "gbp", "pound"],
   JPY: ["¥", "jpy", "yen"], CAD: ["cad", "c$"], AUD: ["aud", "a$"], SGD: ["sgd", "s$"],

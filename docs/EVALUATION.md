@@ -31,9 +31,23 @@
 
 The baseline quotes whole sentences, so its quotes always exist; its errors are wrong values from the right sentence (for example the concepts date taken as the final deadline) and missed facts.
 
-### Claude (`claude-opus-5-5`, effort low) — **not run yet**
+### Claude (`claude-opus-5-5`, effort low, structured output) — 8 Nov 2026
 
-Run with `npm run eval -- --provider anthropic` once `ANTHROPIC_API_KEY` is set. Expected cost at list price is a few cents per brief; the script logs the actual tokens and cost. Results will be added here unedited, including failures.
+**Run 1 (as built)** — `eval/results/anthropic-2026-11-08T16-23-20-968Z.json`
+
+| Split | Briefs | Precision | Recall | Wrong facts kept | Invalid quotes | Claims dropped | Ambiguity flagged | AI questions on clean briefs | Mean latency | Cost (list price) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Tuning | 4 | 1.000 | 0.960 | 0 | 0 / 24 | 3 | 2 / 2 | 3 | 4.0 s | $0.080 |
+| Held-out | 6 | 1.000 | 0.938 | 0 | 0 / 41 | 4 | 8 / 8 | 1 | 5.3 s | $0.129 |
+| All | 10 | 1.000 | 0.947 | 0 | 0 / 65 | 7 | 10 / 10 | 4 | 4.8 s | $0.209 (29,161 in / 4,594 out tokens) |
+
+What the validator dropped in run 1: quantity "1" inferred from "a"/"the" (3×, conservative misses), an unsupported format name `html`, the INR price (correct: PayPal India cannot receive domestic payments), and **one false rejection**: "6 PM Eastern" → `America/New_York` was dropped because the validator did not recognise "Eastern" as a timezone word.
+
+**Fix after seeing a held-out result:** the validator now accepts US zone words (eastern, central, mountain, pacific); unit test added. Because this change was prompted by a held-out brief (H2), H2 is no longer a clean held-out item for that rule.
+
+**Run 2 (after the fix)** — `eval/results/anthropic-2026-11-08T16-25-10-122Z.json`: precision 1.000, recall 0.965 (held-out 0.969), 0 wrong facts kept, 0 / 64 invalid quotes, ambiguity 10 / 10, 5 AI questions on clean briefs, mean latency 5.3 s, $0.215. Run-to-run differences also include normal model variance (single run each; no repeated-sampling statistics).
+
+**Reading these numbers:** on ten short, fictional, hand-labelled briefs, Claude plus the quote validator kept no wrong values and asked about every labelled ambiguity; the misses are conservative (values left unknown). Ten briefs written by the same person who built the system is a tiny, biased sample. It does not predict performance on real client conversations.
 
 ## End-to-end scenarios (`eval/scenarios.ts`)
 

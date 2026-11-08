@@ -21,10 +21,10 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 | Two-party approval and immutable versions | Built | `src/lib/services/briefs.ts`, tests |
 | PayPal order/capture/webhooks (server-side, idempotent) | Built; **mock-tested** | `src/lib/services/payments.ts`, `webhooks.ts`, 32 Vitest tests |
 | **Live PayPal sandbox payment** | See [docs/VERIFICATION.md](docs/VERIFICATION.md) | needs sandbox app credentials |
-| **Real Claude extraction** | See [docs/VERIFICATION.md](docs/VERIFICATION.md) | needs `ANTHROPIC_API_KEY` |
+| **Real Claude extraction** | Live run passed 8 Nov | `npm run ai:check`, [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Delivery checks, buyer actions, evidence export | Built | tests + Playwright journey |
 | Browser journey (fixture mode) | Passing | `tests/e2e/journey.spec.ts` |
-| Synthetic extraction benchmark | Baseline run; Claude run pending | [docs/EVALUATION.md](docs/EVALUATION.md) |
+| Synthetic extraction benchmark | Baseline + 2 Claude runs (precision 1.00, recall 0.95–0.97) | [docs/EVALUATION.md](docs/EVALUATION.md) |
 | Customer interviews | **Not done** — script only | [docs/INTERVIEW_SCRIPT.md](docs/INTERVIEW_SCRIPT.md) |
 
 ## Run it locally (Windows, macOS or Linux)
@@ -72,7 +72,7 @@ Without credentials the app shows a clear **setup state**. For offline developme
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js development, production build, production server |
 | `npm run typecheck` / `lint` | TypeScript and ESLint |
-| `npm test` | Vitest: unit + service-level failure cases (mock PayPal, real SQLite) |
+| `npm test` | Vitest: 33 unit + service-level failure cases (mock PayPal, real SQLite) |
 | `npm run test:e2e` | Playwright browser journey (run `npm run build` first; fixture mode) |
 | `npm run paypal:check` | Live sandbox: OAuth, create order, idempotent retry, read back |
 | `npm run eval -- --provider fixture` | Synthetic benchmark, rule-based baseline (free) |

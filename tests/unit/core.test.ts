@@ -58,6 +58,15 @@ describe("extraction validation", () => {
     expect(brief.openQuestions.some((q) => q.origin === "CHECK" && /revision/i.test(q.text))).toBe(true);
   });
 
+  it("accepts a timezone stated as a US zone word (\"6 PM Eastern\")", () => {
+    const text = "Final print-ready PDF by 5 December 2026, 6 PM Eastern.";
+    const ai = base();
+    ai.deadline = { date: "2026-12-05", time: "18:00", timezone: "America/New_York", clarity: "stated", quotes: [{ source: "S1", text: "by 5 December 2026, 6 PM Eastern" }] };
+    const { brief } = validateExtraction(ai, [{ label: "S1", text }]);
+    expect(brief.deadline.timezone).toBe("America/New_York");
+    expect(brief.deadline.time).toBe("18:00");
+  });
+
   it("rejects INR (PayPal India cannot receive domestic payments) and asks for a currency", () => {
     const ai = base();
     const text = "Total fee is INR 25000 for the website.";

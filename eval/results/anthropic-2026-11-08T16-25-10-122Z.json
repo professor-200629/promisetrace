@@ -1,0 +1,380 @@
+{
+  "label": "SYNTHETIC BENCHMARK — fictional, hand-labelled briefs; not customer validation",
+  "provider": "anthropic",
+  "model": "claude-opus-5-5",
+  "effort": "low",
+  "runs": 1,
+  "ranAt": "2026-11-08T16:25:10.122Z",
+  "summary": {
+    "all": {
+      "briefs": 10,
+      "failures": 0,
+      "precision": 1,
+      "recall": 0.965,
+      "wrongFactsKept": 0,
+      "invalidQuotes": 0,
+      "quotesTotal": 68,
+      "claimsDroppedByValidator": 7,
+      "ambiguityFlagged": "10/10",
+      "aiQuestionsOnCleanBriefs": 5,
+      "meanLatencyMs": 5338,
+      "totalCostUsd": 0.2145,
+      "tokens": {
+        "input": 29161,
+        "output": 4894
+      }
+    },
+    "tuning": {
+      "briefs": 4,
+      "failures": 0,
+      "precision": 1,
+      "recall": 0.96,
+      "wrongFactsKept": 0,
+      "invalidQuotes": 0,
+      "quotesTotal": 25,
+      "claimsDroppedByValidator": 4,
+      "ambiguityFlagged": "2/2",
+      "aiQuestionsOnCleanBriefs": 4,
+      "meanLatencyMs": 4185,
+      "totalCostUsd": 0.0814,
+      "tokens": {
+        "input": 11672,
+        "output": 1736
+      }
+    },
+    "heldout": {
+      "briefs": 6,
+      "failures": 0,
+      "precision": 1,
+      "recall": 0.969,
+      "wrongFactsKept": 0,
+      "invalidQuotes": 0,
+      "quotesTotal": 43,
+      "claimsDroppedByValidator": 3,
+      "ambiguityFlagged": "8/8",
+      "aiQuestionsOnCleanBriefs": 1,
+      "meanLatencyMs": 6107,
+      "totalCostUsd": 0.1331,
+      "tokens": {
+        "input": 17489,
+        "output": 3158
+      }
+    }
+  },
+  "rows": [
+    {
+      "run": 0,
+      "id": "T1-logo-clean",
+      "split": "tuning",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 4156,
+      "inputTokens": 2928,
+      "outputTokens": 390,
+      "costUsd": 0.019512,
+      "tp": 9,
+      "predicted": 9,
+      "expected": 9,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 5,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 0,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "T2-landing-page-vague",
+      "split": "tuning",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 5226,
+      "inputTokens": 2916,
+      "outputTokens": 524,
+      "costUsd": 0.022144,
+      "tp": 2,
+      "predicted": 2,
+      "expected": 3,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 8,
+      "droppedByValidator": 4,
+      "dropped": [
+        {
+          "field": "deliverables[0].quantity",
+          "value": "1",
+          "reason": "quoted passages do not mention this number"
+        },
+        {
+          "field": "deliverables[0].formats",
+          "value": "figma",
+          "reason": "unsupported format name"
+        },
+        {
+          "field": "deliverables[1].quantity",
+          "value": "1",
+          "reason": "quoted passages do not mention this number"
+        },
+        {
+          "field": "deliverables[1].formats",
+          "value": "html",
+          "reason": "unsupported format name"
+        }
+      ],
+      "ambiguity": [
+        {
+          "field": "deadline",
+          "flagged": true
+        },
+        {
+          "field": "revisions",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 3,
+      "cleanBrief": false
+    },
+    {
+      "run": 0,
+      "id": "T3-banners-sizes",
+      "split": "tuning",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 3690,
+      "inputTokens": 2916,
+      "outputTokens": 429,
+      "costUsd": 0.020244,
+      "tp": 7,
+      "predicted": 7,
+      "expected": 7,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 6,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 2,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "T4-injection",
+      "split": "tuning",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 3668,
+      "inputTokens": 2912,
+      "outputTokens": 393,
+      "costUsd": 0.019508,
+      "tp": 6,
+      "predicted": 6,
+      "expected": 6,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 6,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 2,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "H1-icon-set",
+      "split": "heldout",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 4586,
+      "inputTokens": 2918,
+      "outputTokens": 359,
+      "costUsd": 0.018852,
+      "tp": 8,
+      "predicted": 8,
+      "expected": 9,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 5,
+      "droppedByValidator": 1,
+      "dropped": [
+        {
+          "field": "deliverables[1].quantity",
+          "value": "1",
+          "reason": "quoted passages do not mention this number"
+        }
+      ],
+      "ambiguity": [],
+      "aiQuestions": 0,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "H2-conflicting-price",
+      "split": "heldout",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 8535,
+      "inputTokens": 2913,
+      "outputTokens": 950,
+      "costUsd": 0.030652,
+      "tp": 4,
+      "predicted": 4,
+      "expected": 4,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 10,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [
+        {
+          "field": "price",
+          "flagged": true
+        },
+        {
+          "field": "revisions",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 5,
+      "cleanBrief": false
+    },
+    {
+      "run": 0,
+      "id": "H3-inr-domestic",
+      "split": "heldout",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 4245,
+      "inputTokens": 2896,
+      "outputTokens": 413,
+      "costUsd": 0.019844,
+      "tp": 5,
+      "predicted": 5,
+      "expected": 5,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 6,
+      "droppedByValidator": 1,
+      "dropped": [
+        {
+          "field": "price",
+          "value": "15000.00 INR",
+          "reason": "INR cannot be used: PayPal India accounts cannot receive domestic INR payments"
+        }
+      ],
+      "ambiguity": [
+        {
+          "field": "price",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 1,
+      "cleanBrief": false
+    },
+    {
+      "run": 0,
+      "id": "H4-couple-of-concepts",
+      "split": "heldout",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 4509,
+      "inputTokens": 2909,
+      "outputTokens": 537,
+      "costUsd": 0.022376,
+      "tp": 4,
+      "predicted": 4,
+      "expected": 4,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 8,
+      "droppedByValidator": 1,
+      "dropped": [
+        {
+          "field": "deliverables[1].quantity",
+          "value": "1",
+          "reason": "quoted passages do not mention this number"
+        }
+      ],
+      "ambiguity": [
+        {
+          "field": "quantity",
+          "flagged": true
+        },
+        {
+          "field": "formats",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 3,
+      "cleanBrief": false
+    },
+    {
+      "run": 0,
+      "id": "H5-change-mid-thread",
+      "split": "heldout",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 3916,
+      "inputTokens": 2942,
+      "outputTokens": 466,
+      "costUsd": 0.021088,
+      "tp": 7,
+      "predicted": 7,
+      "expected": 7,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 9,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [],
+      "aiQuestions": 1,
+      "cleanBrief": true
+    },
+    {
+      "run": 0,
+      "id": "H6-no-price",
+      "split": "heldout",
+      "status": "OK",
+      "model": "claude-opus-5-5",
+      "latencyMs": 10850,
+      "inputTokens": 2911,
+      "outputTokens": 433,
+      "costUsd": 0.020304,
+      "tp": 3,
+      "predicted": 3,
+      "expected": 3,
+      "wrongKept": [],
+      "missed": [],
+      "invalidQuotes": 0,
+      "quotesTotal": 5,
+      "droppedByValidator": 0,
+      "dropped": [],
+      "ambiguity": [
+        {
+          "field": "price",
+          "flagged": true
+        },
+        {
+          "field": "timezone",
+          "flagged": true
+        },
+        {
+          "field": "revisions",
+          "flagged": true
+        }
+      ],
+      "aiQuestions": 3,
+      "cleanBrief": false
+    }
+  ]
+}
