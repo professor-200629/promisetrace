@@ -63,8 +63,9 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   await expect(seller.getByText(/Only the buyer can start checkout/)).toBeVisible();
   await tab(buyer, dealUrl, "payment");
   await expect(buyer.getByText("FIXTURE checkout.")).toBeVisible();
-  await buyer.getByRole("button", { name: /Simulate payment of 300.00 USD/ }).click();
-    await expect(buyer.getByText("FIXTURE — not PayPal")).toBeVisible();
+  await buyer.getByRole("button", { name: /Simulate a hold of 300.00 USD/ }).click();
+  await expect(buyer.getByText("FIXTURE — not PayPal")).toBeVisible();
+  await expect(buyer.getByText(/PayPal holds 300.00 USD for this agreement/)).toBeVisible();
 
   // --- Seller delivers concepts + final PNG but forgets the SVG
   await tab(seller, dealUrl, "delivery");
@@ -73,7 +74,7 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   await inputs.nth(1).setInputFiles([{ name: "northwind-final.png", mimeType: "image/png", buffer: PNG }]);
   await seller.getByLabel(/Note to the buyer/).fill("Final logo attached.");
   await seller.getByRole("button", { name: "Submit delivery" }).click();
-  await expect(seller.getByText(/Not met yet: .*SVG/)).toBeVisible();
+  await expect(seller.getByText(/Delivery recorded\. Not met yet: .*SVG/)).toBeVisible();
 
   // --- The overview shows the missing SVG linked to the source passage
   await tab(buyer, dealUrl, "overview");
@@ -94,11 +95,11 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   await seller.getByRole("button", { name: "Submit delivery" }).click();
   await expect(seller.getByText(/Delivery recorded\. \d+ checks met/)).toBeVisible();
 
-  // --- Buyer accepts; the objection stays visible until withdrawn
+  // --- Buyer accepts: the held payment is captured; the objection stays visible until withdrawn
   await tab(buyer, dealUrl, "delivery");
   await buyer.getByLabel(/^Accept/).check();
-  await buyer.getByRole("button", { name: "Record my response" }).click();
-  await expect(buyer.getByText("Recorded.")).toBeVisible();
+  await buyer.getByRole("button", { name: "Accept and release 300.00 USD to the seller" }).click();
+  await expect(buyer.getByText(/Acceptance recorded\. PayPal captured the held payment/)).toBeVisible();
   await tab(buyer, dealUrl, "overview");
   await expect(buyer.getByText("Open buyer objections")).toBeVisible();
   await tab(buyer, dealUrl, "delivery");
@@ -116,6 +117,7 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   const record = await res.json();
   expect(record.history.hashChainIntact).toBe(true);
   expect(record.payment.assertionType).toBe("fixture_not_paypal");
+  expect(record.payment).toMatchObject({ flow: "hold_at_checkout_capture_on_acceptance", status: "COMPLETED", captureTrigger: "BUYER_ACCEPTED" });
   expect(JSON.stringify(record)).not.toContain("@example.test");
   const svgReq = record.requirements.find((r: { key: string }) => r.key.endsWith(":svg"));
   expect(svgReq.result).toBe("MET");

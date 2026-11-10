@@ -7,5 +7,5 @@ import { createCheckout, getGateway } from "@/lib/services/payments";
 export const POST = route<{ params: Promise<{ id: string }> }>(async (_req, ctx, userId) => {
   const { id } = await ctx.params;
   const r = await createCheckout(prisma, getGateway(), id, userId);
-  return NextResponse.json({ orderId: r.orderId, mode: r.mode });
+  return NextResponse.json({ orderId: r.orderId, mode: r.mode, intent: r.intent });
 });

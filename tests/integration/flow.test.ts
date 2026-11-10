@@ -16,6 +16,9 @@ import { verifyChain } from "@/lib/services/events";
 import { AppError } from "@/lib/errors";
 import type { BriefContent } from "@/lib/brief";
 
+/** These tests cover capture-at-checkout; the default hold flow is tested in holds.test.ts. */
+const CAP = { intent: "CAPTURE" as const };
+
 async function expectCode(p: Promise<unknown>, code: string) {
   try {
     await p;
@@ -46,7 +49,7 @@ async function approveBoth(s: Awaited<ReturnType<typeof setup>>) {
 async function paidDeal(gw = new ScriptedGateway()) {
   const s = await setup();
   await approveBoth(s);
-  const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id);
+  const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id, CAP);
   gw.approve(orderId);
   const r = await capturePayment(db, gw, s.deal.id, s.buyer.id, orderId);
   expect(r.kind).toBe("COMPLETED");
@@ -61,7 +64,7 @@ describe("access control", () => {
     await expectCode(buildDealView(db, s.deal.id, s.outsider.id), "NOT_FOUND");
     await expectCode(readFileForUser(db, file.id, s.outsider.id), "NOT_FOUND");
     await expectCode(approveVersion(db, s.deal.id, s.outsider.id, s.v1.id, s.v1.contentHash), "NOT_FOUND");
-    await expectCode(createCheckout(db, s.gw, s.deal.id, s.outsider.id), "NOT_FOUND");
+    await expectCode(createCheckout(db, s.gw, s.deal.id, s.outsider.id, CAP), "NOT_FOUND");
     await expectCode(capturePayment(db, s.gw, s.deal.id, s.outsider.id, s.orderId), "NOT_FOUND");
     await expectCode(recordBuyerAction(db, s.deal.id, s.outsider.id, { type: "ACCEPT", message: "", requirementKeys: [] }), "NOT_FOUND");
     // participants can
@@ -71,7 +74,7 @@ describe("access control", () => {
   it("roles are enforced: the seller cannot pay and the buyer cannot deliver", async () => {
     const s = await setup();
     await approveBoth(s);
-    await expectCode(createCheckout(db, new ScriptedGateway(), s.deal.id, s.seller.id), "FORBIDDEN");
+    await expectCode(createCheckout(db, new ScriptedGateway(), s.deal.id, s.seller.id, CAP), "FORBIDDEN");
     const p = await paidDeal();
     await expectCode(submitDelivery(db, p.deal.id, p.buyer.id, { note: "", files: [{ deliverableKey: "D2", name: "x.png", bytes: PNG_BYTES }] }), "FORBIDDEN");
   });
@@ -92,7 +95,7 @@ describe("two-party approval and versions", () => {
     const s = await setup();
     const gw = new ScriptedGateway();
     await approveVersion(db, s.deal.id, s.seller.id, s.v1.id, s.v1.contentHash);
-    await expectCode(createCheckout(db, gw, s.deal.id, s.buyer.id), "NOT_APPROVED");
+    await expectCode(createCheckout(db, gw, s.deal.id, s.buyer.id, CAP), "NOT_APPROVED");
     expect(gw.calls).toHaveLength(0);
   });
 
@@ -142,8 +145,8 @@ describe("payment", () => {
     const s = await setup();
     await approveBoth(s);
     const gw = new ScriptedGateway();
-    const a = await createCheckout(db, gw, s.deal.id, s.buyer.id);
-    const b = await createCheckout(db, gw, s.deal.id, s.buyer.id);
+    const a = await createCheckout(db, gw, s.deal.id, s.buyer.id, CAP);
+    const b = await createCheckout(db, gw, s.deal.id, s.buyer.id, CAP);
     expect(b.orderId).toBe(a.orderId);
     expect(gw.orders.size).toBe(1);
   });
@@ -153,12 +156,12 @@ describe("payment", () => {
     await approveBoth(s);
     const gw = new ScriptedGateway();
     gw.orderAmountOverride = { currency_code: "USD", value: "1.00" };
-    await expectCode(createCheckout(db, gw, s.deal.id, s.buyer.id), "AMOUNT_MISMATCH");
+    await expectCode(createCheckout(db, gw, s.deal.id, s.buyer.id, CAP), "AMOUNT_MISMATCH");
     const s2 = await setup();
     await approveBoth(s2);
     const gw2 = new ScriptedGateway();
     gw2.orderAmountOverride = { currency_code: "EUR", value: "300.00" };
-    await expectCode(createCheckout(db, gw2, s2.deal.id, s2.buyer.id), "AMOUNT_MISMATCH");
+    await expectCode(createCheckout(db, gw2, s2.deal.id, s2.buyer.id, CAP), "AMOUNT_MISMATCH");
     expect((await paymentSummary(db, s2.deal.id)).isPaid).toBe(false);
   });
 
@@ -167,7 +170,7 @@ describe("payment", () => {
     await approveBoth(s);
     const gw = new ScriptedGateway();
     gw.behavior = "TAMPER_CAPTURE_AMOUNT";
-    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id);
+    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id, CAP);
     gw.approve(orderId);
     await expectCode(capturePayment(db, gw, s.deal.id, s.buyer.id, orderId), "AMOUNT_MISMATCH");
     const sum = await paymentSummary(db, s.deal.id);
@@ -180,7 +183,7 @@ describe("payment", () => {
     const s = await setup();
     await approveBoth(s);
     const gw = new ScriptedGateway();
-    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id);
+    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id, CAP);
     gw.approve(orderId);
     const edited = logoBrief();
     edited.revisionRounds.count = 1;
@@ -193,7 +196,7 @@ describe("payment", () => {
     const s = await setup();
     await approveBoth(s);
     const gw = new ScriptedGateway();
-    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id);
+    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id, CAP);
     const r = await capturePayment(db, gw, s.deal.id, s.buyer.id, orderId);
     expect(r.kind).toBe("NOT_APPROVED");
     expect(gw.captureCalls()).toHaveLength(0);
@@ -210,7 +213,7 @@ describe("payment", () => {
     await approveBoth(t);
     const gw = new ScriptedGateway();
     gw.behavior = "ALREADY_CAPTURED_AFTER";
-    const { orderId } = await createCheckout(db, gw, t.deal.id, t.buyer.id);
+    const { orderId } = await createCheckout(db, gw, t.deal.id, t.buyer.id, CAP);
     gw.approve(orderId);
     await expectCode(capturePayment(db, gw, t.deal.id, t.buyer.id, orderId), "PAYPAL_ERROR");
     expect((await paymentSummary(db, t.deal.id)).isPaid).toBe(false);
@@ -225,13 +228,13 @@ describe("payment", () => {
     await approveBoth(s);
     const gw = new ScriptedGateway();
     gw.behavior = "PENDING";
-    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id);
+    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id, CAP);
     gw.approve(orderId);
     const r = await capturePayment(db, gw, s.deal.id, s.buyer.id, orderId);
     expect(r).toEqual({ kind: "PENDING", reason: "PENDING_REVIEW" });
     expect((await paymentSummary(db, s.deal.id)).isPaid).toBe(false);
     await expectCode(submitDelivery(db, s.deal.id, s.seller.id, { note: "", files: [{ deliverableKey: "D2", name: "a.png", bytes: PNG_BYTES }] }), "NOT_APPROVED");
-    await expectCode(createCheckout(db, gw, s.deal.id, s.buyer.id), "PAYMENT_PENDING");
+    await expectCode(createCheckout(db, gw, s.deal.id, s.buyer.id, CAP), "PAYMENT_PENDING");
 
     const pay = (await paymentSummary(db, s.deal.id)).latest!;
     const capture = { id: pay.captureId, status: "COMPLETED", amount: { currency_code: "USD", value: "300.00" }, custom_id: pay.customId, invoice_id: pay.invoiceId, supplementary_data: { related_ids: { order_id: orderId } } };
@@ -246,7 +249,7 @@ describe("payment", () => {
     await approveBoth(s);
     const gw = new ScriptedGateway();
     gw.behavior = "INSTRUMENT_DECLINED";
-    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id);
+    const { orderId } = await createCheckout(db, gw, s.deal.id, s.buyer.id, CAP);
     gw.approve(orderId);
     expect((await capturePayment(db, gw, s.deal.id, s.buyer.id, orderId)).kind).toBe("INSTRUMENT_DECLINED");
     expect((await paymentSummary(db, s.deal.id)).isPaid).toBe(false);

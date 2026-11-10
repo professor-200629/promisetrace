@@ -165,6 +165,7 @@ model Payment {
   version             BriefVersion @relation(fields: [versionId], references: [id])
   versionHash         String
   mode                String       // SANDBOX | FIXTURE
+  intent              String       @default("CAPTURE") // CAPTURE = paid at checkout | AUTHORIZE = held at checkout, captured on acceptance
   amountMinor         Int
   currency            String
   invoiceId           String       @unique
@@ -173,8 +174,16 @@ model Payment {
   captureRequestId    String       @unique
   paypalOrderId       String?      @unique
   orderStatus         String?      // PayPal order status as last observed
-  status              String       // INITIATED | ORDER_CREATED | CAPTURE_PENDING | COMPLETED | DECLINED | FAILED | REFUNDED | PARTIALLY_REFUNDED | REVERSED | MISMATCH | ABANDONED
+  status              String       // INITIATED | ORDER_CREATED | AUTHORIZED | AUTHORIZATION_PENDING | AUTHORIZATION_DENIED | VOIDED | EXPIRED | CAPTURE_PENDING | COMPLETED | DECLINED | FAILED | REFUNDED | PARTIALLY_REFUNDED | REVERSED | MISMATCH | ABANDONED
   statusReason        String?
+  authorizeRequestId  String?      @unique
+  voidRequestId       String?      @unique
+  authorizationId     String?      @unique
+  authorizationStatus String?      // PayPal authorization status as last observed
+  authorizedAt        DateTime?
+  authorizationExpiresAt DateTime?
+  voidedAt            DateTime?
+  captureTrigger      String?      // BUYER_ACCEPTED | SELLER_AFTER_REVIEW_WINDOW (holds only)
   captureId           String?      @unique
   captureStatus       String?
   grossValue          String?

@@ -6,12 +6,12 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 
 1. The seller pastes the conversation. **Claude (Anthropic API)** proposes a structured brief — deliverables, counts, file formats, price, deadline and timezone, revision rounds, and open questions. Every value must quote the source; our code checks that the quote exists and mentions that value, or the value stays *unknown*.
 2. The buyer joins through a private invite link. **Both participants approve the same version.** Any edit before payment creates a new version and resets approvals.
-3. The buyer pays with **PayPal Checkout (sandbox)**. Orders are created and captured on the server from the approved version's price; only a capture PayPal returns as `COMPLETED`, with the exact amount, currency, `custom_id` and `invoice_id`, marks the agreement paid.
+3. The buyer pays with **PayPal Checkout (sandbox)**, and PayPal **holds** the money (an authorization) instead of taking it. Orders are created on the server from the approved version's price. The hold is **captured when the buyer accepts the delivery** (or by the seller after a review window if every check is met and no objection is open), and **released** if the seller cancels or the deadline passes with nothing delivered. Only a capture PayPal returns as `COMPLETED`, with the exact amount and reconciliation IDs, marks the agreement paid.
 4. The seller uploads files. **Deterministic code** checks promised formats (from file bytes, not names), counts and the deadline in the agreed timezone. In the demo, the seller forgets the SVG; PromiseTrace flags it and links the finding to the sentence in the approved brief.
-5. The buyer acknowledges, accepts, requests a revision or reports a problem — separate, explicit statements. Objections stay visible until withdrawn.
+5. The buyer acknowledges, accepts, requests a revision or reports a problem — separate, explicit statements. Accepting captures the held payment. Objections stay visible until withdrawn.
 6. A **requirement-to-evidence table**, a **hash-chained history**, and an **HTML/JSON evidence export** keep *agreed*, *observed* and *needs review* apart, and label every entry as recorded by PromiseTrace, confirmed by PayPal's API, stated by a participant, or interpreted by AI.
 
-> PromiseTrace records facts and supports resolution between two parties. It does **not** hold funds, release PayPal holds, decide PayPal claims, or guarantee PayPal Seller Protection. All demo data is fictional.
+> PromiseTrace records facts and supports resolution between two parties. It never holds funds itself: a payment hold is a PayPal authorization on the buyer's payment method. It does **not** lift PayPal account holds, decide PayPal claims, or guarantee PayPal Seller Protection. All demo data is fictional.
 
 ## Status (be precise)
 
@@ -19,7 +19,8 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 |---|---|---|
 | Brief extraction with source validation | Built | `src/lib/ai/*`, unit tests |
 | Two-party approval and immutable versions | Built | `src/lib/services/briefs.ts`, tests |
-| PayPal order/capture/webhooks (server-side, idempotent) | Built; **mock-tested** | `src/lib/services/payments.ts`, `webhooks.ts`, 32 Vitest tests |
+| PayPal order/capture/webhooks (server-side, idempotent) | Built; mock-tested and live-tested | `src/lib/services/payments.ts`, `webhooks.ts` |
+| **Hold at checkout, capture on acceptance** (authorize / capture / void) | Built 10 Nov; 24 mock tests; **live hosted run passed** (hold → buyer accepts → capture COMPLETED, signed webhooks verified) | `src/lib/hold-rules.ts`, `src/lib/services/hold.ts`, [VERIFICATION 5c–5d](docs/VERIFICATION.md) |
 | **Live PayPal sandbox payment** | Passed 8 Nov (guest card checkout, capture COMPLETED, re-verified via API) | [docs/VERIFICATION.md](docs/VERIFICATION.md), [sample record](docs/sample-evidence/) |
 | **Real Claude extraction** | Live run passed 8 Nov | `npm run ai:check`, [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Delivery checks, buyer actions, evidence export | Built | tests + Playwright journey |
@@ -29,7 +30,7 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 
 ## Try the hosted demo
 
-**https://promisetrace-sandbox.vercel.app** — PayPal **sandbox** and Claude live; fictional data only. Demo logins are listed below. To pay, use a PayPal sandbox buyer account or the sandbox "Debit or Credit Card" option with a PayPal-published test card (for example Visa 4012 8888 8888 1881, any future expiry, any CVV). No real money moves.
+**https://promisetrace-sandbox.vercel.app** — PayPal **sandbox** and Claude live; fictional data only. Demo logins are listed below. To pay, use a PayPal sandbox buyer account or the sandbox "Debit or Credit Card" option with a PayPal-published test card (for example Visa 4012 8888 8888 1881, any future expiry, any CVV). PayPal holds the payment; it is captured when the buyer accepts the delivery. No real money moves.
 
 ## Run it locally (Windows, macOS or Linux)
 
@@ -51,7 +52,8 @@ Fill `.env`:
 |---|---|---|
 | `BETTER_AUTH_SECRET` | sessions | any 32+ random characters |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | real sandbox checkout | developer.paypal.com → Apps & Credentials → **Sandbox** → your app |
-| `PAYPAL_WEBHOOK_ID` | webhook verification | after adding `https://<your-host>/api/paypal/webhook` to the app |
+| `PAYPAL_WEBHOOK_ID` | webhook verification | after adding `https://<your-host>/api/paypal/webhook` to the app (subscribe to `PAYMENT.AUTHORIZATION.CREATED` / `VOIDED` too) |
+| `CHECKOUT_INTENT`, `REVIEW_WINDOW_DAYS` | payment flow | default `AUTHORIZE` (hold, capture on acceptance) and 5 days; `CAPTURE` takes the money at checkout |
 | `ANTHROPIC_API_KEY`, `AI_MODEL` | real AI extraction | default `claude-opus-5-5`, effort `low`, daily call cap |
 
 Without credentials the app shows a clear **setup state**. For offline development only, `PAYPAL_MODE=fixture` and `AI_PROVIDER=fixture` replace PayPal and the AI with labelled stand-ins; every fixture payment and extraction is marked FIXTURE in the UI and in exports.
@@ -65,9 +67,9 @@ Without credentials the app shows a clear **setup state**. For offline developme
 1. Sign in as the seller → **New agreement** → *Use the fictional logo example* → **Create and propose brief**.
 2. Copy the invite link → open it in a private window → sign in as the buyer → **Join**.
 3. Both approve the same version (edit something first to see approvals reset).
-4. Buyer → **Payment** → pay with the PayPal sandbox buyer.
+4. Buyer → **Payment** → pay with the PayPal sandbox buyer. PayPal now **holds** the money; nothing is captured.
 5. Seller → **Delivery** → upload two concept PNGs and a final PNG (no SVG) → see *Final logo files: SVG — Not met*, linked to the source line.
-6. Buyer reports the problem → seller uploads the SVG → buyer accepts and withdraws the objection.
+6. Buyer reports the problem → seller uploads the SVG → buyer chooses **Accept and release** (this captures the held payment) and withdraws the objection.
 7. **History & export** → download the HTML or JSON record.
 
 ## Scripts
@@ -76,10 +78,11 @@ Without credentials the app shows a clear **setup state**. For offline developme
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js development, production build, production server |
 | `npm run typecheck` / `lint` | TypeScript and ESLint |
-| `npm test` | Vitest: 33 unit + service-level failure cases (mock PayPal, real SQLite) |
+| `npm test` | Vitest: 57 unit + service-level failure cases (mock PayPal, real SQLite) |
 | `npm run test:e2e` | Playwright browser journey (run `npm run build` first; fixture mode) |
 | `npm run paypal:check` | Live sandbox: OAuth, create order, idempotent retry, read back |
-| `npm run paypal:verify` | Re-read the latest completed capture from PayPal and compare with the stored record |
+| `npm run paypal:verify` | Re-read the latest completed capture (and, for holds, the authorization) from PayPal and compare with the stored record |
+| `npx tsx scripts/paypal-authorize-check.ts` | Live sandbox check of authorize / capture / void for your merchant (see the file header) |
 | `npm run eval -- --provider fixture` | Synthetic benchmark, rule-based baseline (free) |
 | `npm run eval -- --provider anthropic` | Synthetic benchmark with Claude (uses API credit) |
 | `npx tsx eval/scenarios.ts` | Four scripted end-to-end scenarios |

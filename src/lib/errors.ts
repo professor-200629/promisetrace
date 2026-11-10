@@ -10,7 +10,9 @@ export type ErrorCode =
   | "AMOUNT_MISMATCH"
   | "PAYPAL_ERROR"
   | "SETUP_REQUIRED"
-  | "LOCKED";
+  | "LOCKED"
+  | "NOT_ALLOWED_YET"
+  | "HOLD_ENDED";
 
 export class AppError extends Error {
   constructor(readonly code: ErrorCode, message: string, readonly status: number = codeToStatus(code)) {

@@ -27,6 +27,20 @@ export type PayPalCapture = {
   update_time?: string;
 };
 
+/** A hold on the buyer's funds (Payments v2 authorization). Valid 29 days; PayPal honours the funds for 3 days. */
+export type PayPalAuthorization = {
+  id: string;
+  status: string; // CREATED | CAPTURED | DENIED | PARTIALLY_CAPTURED | VOIDED | PENDING | EXPIRED
+  status_details?: { reason?: string };
+  amount?: PayPalAmount;
+  custom_id?: string;
+  invoice_id?: string;
+  expiration_time?: string;
+  supplementary_data?: { related_ids?: { order_id?: string } };
+  create_time?: string;
+  update_time?: string;
+};
+
 export type PayPalOrder = {
   id: string;
   status: string; // CREATED | SAVED | APPROVED | VOIDED | COMPLETED | PAYER_ACTION_REQUIRED
@@ -38,20 +52,30 @@ export type PayPalOrder = {
     description?: string;
     amount?: PayPalAmount;
     payee?: { merchant_id?: string; email_address?: string };
-    payments?: { captures?: PayPalCapture[] };
+    payments?: { captures?: PayPalCapture[]; authorizations?: PayPalAuthorization[] };
   }>;
   payer?: { payer_id?: string; email_address?: string };
   links?: Array<{ href: string; rel: string; method?: string }>;
 };
 
+export type OrderIntent = "CAPTURE" | "AUTHORIZE";
+
 export type CreateOrderInput = {
   requestId: string;
+  intent?: OrderIntent; // default CAPTURE
   amountValue: string;
   currency: string;
   invoiceId: string;
   customId: string;
   referenceId: string;
   description: string;
+};
+
+export type CaptureAuthorizationInput = {
+  requestId: string;
+  amountValue: string;
+  currency: string;
+  finalCapture: boolean;
 };
 
 export class PayPalApiError extends Error {
@@ -76,13 +100,19 @@ export interface PayPalGateway {
   getOrder(orderId: string): Promise<PayPalOrder>;
   captureOrder(orderId: string, requestId: string): Promise<PayPalOrder>;
   getCapture(captureId: string): Promise<PayPalCapture>;
+  /** Places the hold for an APPROVED order created with intent AUTHORIZE. */
+  authorizeOrder(orderId: string, requestId: string): Promise<PayPalOrder>;
+  getAuthorization(authorizationId: string): Promise<PayPalAuthorization>;
+  captureAuthorization(authorizationId: string, input: CaptureAuthorizationInput): Promise<PayPalCapture>;
+  /** Releases the hold. Returns the authorization as PayPal reports it afterwards. */
+  voidAuthorization(authorizationId: string, requestId: string): Promise<PayPalAuthorization>;
 }
 
 export const SANDBOX_API_BASE = "https://api-m.sandbox.paypal.com";
 
 export function buildCreateOrderBody(input: CreateOrderInput) {
   return {
-    intent: "CAPTURE",
+    intent: input.intent ?? "CAPTURE",
     purchase_units: [
       {
         reference_id: input.referenceId,
@@ -177,6 +207,23 @@ export class SandboxPayPalGateway implements PayPalGateway {
   getCapture(captureId: string) {
     return this.call<PayPalCapture>("GET", `/v2/payments/captures/${encodeURIComponent(captureId)}`);
   }
+  authorizeOrder(orderId: string, requestId: string) {
+    return this.call<PayPalOrder>("POST", `/v2/checkout/orders/${encodeURIComponent(orderId)}/authorize`, {}, requestId);
+  }
+  getAuthorization(authorizationId: string) {
+    return this.call<PayPalAuthorization>("GET", `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}`);
+  }
+  captureAuthorization(authorizationId: string, input: CaptureAuthorizationInput) {
+    // invoice_id is left out on purpose: the order already carries it, and PayPal may reject a repeated invoice id.
+    return this.call<PayPalCapture>("POST", `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/capture`,
+      { amount: { currency_code: input.currency, value: input.amountValue }, final_capture: input.finalCapture }, input.requestId);
+  }
+  async voidAuthorization(authorizationId: string, requestId: string) {
+    const r = await this.call<PayPalAuthorization | Record<string, never>>("POST", `/v2/payments/authorizations/${encodeURIComponent(authorizationId)}/void`, undefined, requestId);
+    // PayPal answers 204 No Content (empty body) or 200 with the authorization, depending on the Prefer header.
+    if ("id" in r && typeof r.id === "string") return r as PayPalAuthorization;
+    return this.getAuthorization(authorizationId);
+  }
 }
 
 /**
@@ -189,6 +236,7 @@ export class FixturePayPalGateway implements PayPalGateway {
   private orders = new Map<string, PayPalOrder>();
   private byRequest = new Map<string, string>();
   private captures = new Map<string, PayPalCapture>();
+  private authorizations = new Map<string, PayPalAuthorization>();
   private seq = 0;
 
   async createOrder(input: CreateOrderInput): Promise<PayPalOrder> {
@@ -198,7 +246,7 @@ export class FixturePayPalGateway implements PayPalGateway {
     const order: PayPalOrder = {
       id,
       status: "APPROVED",
-      intent: "CAPTURE",
+      intent: input.intent ?? "CAPTURE",
       purchase_units: [{
         reference_id: input.referenceId,
         custom_id: input.customId,
@@ -249,5 +297,55 @@ export class FixturePayPalGateway implements PayPalGateway {
     const c = this.captures.get(captureId);
     if (!c) throw new PayPalApiError(404, "RESOURCE_NOT_FOUND", ["INVALID_RESOURCE_ID"], undefined, "Fixture capture not found");
     return structuredClone(c);
+  }
+
+  async authorizeOrder(orderId: string, requestId: string) {
+    const o = this.orders.get(orderId);
+    if (!o) throw new PayPalApiError(404, "RESOURCE_NOT_FOUND", ["INVALID_RESOURCE_ID"], undefined, "Fixture order not found");
+    if (this.byRequest.get(`authorize:${requestId}`)) return structuredClone(o);
+    if (o.status === "COMPLETED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["ORDER_ALREADY_AUTHORIZED"], undefined, "Fixture order already authorized");
+    const pu = o.purchase_units![0]!;
+    const auth: PayPalAuthorization = {
+      id: `FIXTURE-AUTH-${++this.seq}`, status: "CREATED", amount: pu.amount, custom_id: pu.custom_id, invoice_id: pu.invoice_id,
+      expiration_time: new Date(Date.now() + 29 * 86_400_000).toISOString(), supplementary_data: { related_ids: { order_id: orderId } },
+    };
+    pu.payments = { authorizations: [auth] };
+    o.status = "COMPLETED";
+    o.payer = { payer_id: "FIXTUREPAYER" };
+    this.authorizations.set(auth.id, auth);
+    this.byRequest.set(`authorize:${requestId}`, orderId);
+    return structuredClone(o);
+  }
+
+  async getAuthorization(authorizationId: string) {
+    const a = this.authorizations.get(authorizationId);
+    if (!a) throw new PayPalApiError(404, "RESOURCE_NOT_FOUND", ["INVALID_RESOURCE_ID"], undefined, "Fixture authorization not found");
+    return structuredClone(a);
+  }
+
+  async captureAuthorization(authorizationId: string, input: CaptureAuthorizationInput) {
+    const a = this.authorizations.get(authorizationId);
+    if (!a) throw new PayPalApiError(404, "RESOURCE_NOT_FOUND", ["INVALID_RESOURCE_ID"], undefined, "Fixture authorization not found");
+    const prior = this.byRequest.get(`capauth:${input.requestId}`);
+    if (prior) return structuredClone(this.captures.get(prior)!);
+    if (a.status === "VOIDED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["AUTHORIZATION_VOIDED"], undefined, "Fixture authorization voided");
+    if (a.status === "CAPTURED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["AUTHORIZATION_ALREADY_CAPTURED"], undefined, "Fixture authorization already captured");
+    const amount = { currency_code: input.currency, value: input.amountValue };
+    const capture: PayPalCapture = {
+      id: `FIXTURE-CAPTURE-${++this.seq}`, status: "COMPLETED", amount, custom_id: a.custom_id, invoice_id: a.invoice_id, final_capture: input.finalCapture,
+      seller_receivable_breakdown: { gross_amount: amount }, supplementary_data: { related_ids: { order_id: a.supplementary_data?.related_ids?.order_id } },
+    };
+    a.status = input.finalCapture ? "CAPTURED" : "PARTIALLY_CAPTURED";
+    this.captures.set(capture.id, capture);
+    this.byRequest.set(`capauth:${input.requestId}`, capture.id);
+    return structuredClone(capture);
+  }
+
+  async voidAuthorization(authorizationId: string) {
+    const a = this.authorizations.get(authorizationId);
+    if (!a) throw new PayPalApiError(404, "RESOURCE_NOT_FOUND", ["INVALID_RESOURCE_ID"], undefined, "Fixture authorization not found");
+    if (a.status === "CAPTURED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["AUTHORIZATION_ALREADY_CAPTURED"], undefined, "Fixture authorization already captured");
+    a.status = "VOIDED";
+    return structuredClone(a);
   }
 }

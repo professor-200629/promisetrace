@@ -29,8 +29,10 @@ export async function submitDelivery(db: Db, dealId: string, userId: string, inp
   const { role } = await loadDealForUser(db, dealId, userId);
   requireRole(role, "SELLER", "submit deliveries");
   const pay = await paymentSummary(db, dealId);
-  if (!pay.isPaid) {
-    throw new AppError("NOT_APPROVED", pay.latest?.status === "CAPTURE_PENDING" ? "Payment is still pending at PayPal. Deliver after PayPal completes it." : "Deliveries open after a COMPLETED PayPal capture.");
+  if (!pay.isFunded) {
+    throw new AppError("NOT_APPROVED", pay.latest?.status === "CAPTURE_PENDING" || pay.latest?.status === "AUTHORIZATION_PENDING"
+      ? "Payment is still pending at PayPal. Deliver after PayPal confirms it."
+      : "Deliveries open after PayPal confirms the hold (authorization) or a COMPLETED capture.");
   }
   const st = await versionState(db, dealId);
   if (!st.effective) throw new AppError("INVALID", "No paid agreement found.");

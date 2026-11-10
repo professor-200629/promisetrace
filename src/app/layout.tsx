@@ -54,8 +54,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </header>
         <main id="main" className="mx-auto max-w-6xl px-4 py-8">{children}</main>
         <footer className="mx-auto max-w-6xl px-4 pb-10 text-xs leading-relaxed text-muted">
-          PromiseTrace records what was agreed, paid, delivered and said. It does not hold funds, release PayPal holds, decide PayPal claims or
-          guarantee PayPal Seller Protection. Sandbox demo with fictional data. <Link href="/about" className="underline">How it works and its limits</Link>
+          PromiseTrace records what was agreed, paid, delivered and said. It never holds funds itself (a payment hold is a PayPal authorization on the buyer&apos;s
+          payment method), does not lift PayPal account holds, decide PayPal claims or guarantee PayPal Seller Protection. Sandbox demo with fictional data. <Link href="/about" className="underline">How it works and its limits</Link>
         </footer>
       </body>
     </html>

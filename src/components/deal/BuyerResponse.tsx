@@ -11,15 +11,16 @@ const OPTIONS = [
   { value: "REPORT_PROBLEM", label: "Report a problem", help: "Something promised is missing or wrong. Stays open until you withdraw it." },
 ];
 
-export function BuyerResponse({ dealId, requirements, objections }: { dealId: string; requirements: Array<{ key: string; label: string }>; objections: Array<{ id: string; label: string }> }) {
+export function BuyerResponse({ dealId, requirements, objections, heldAmount }: { dealId: string; requirements: Array<{ key: string; label: string }>; objections: Array<{ id: string; label: string }>; heldAmount: string | null }) {
   const [state, action] = useActionState(buyerAction.bind(null, dealId), null);
   const [type, setType] = useState("ACKNOWLEDGE_RECEIPT");
+  const options = OPTIONS.map((o) => (o.value === "ACCEPT" && heldAmount ? { ...o, help: `The delivery meets what we agreed. PayPal then captures the held ${heldAmount} for the seller.` } : o));
   return (
     <form action={action} className="space-y-4">
       <fieldset>
         <legend className="text-sm font-medium">Your response to the latest delivery</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          {[...OPTIONS, ...(objections.length ? [{ value: "WITHDRAW_OBJECTION", label: "Withdraw an objection", help: "Close one of your open objections." }] : [])].map((o) => (
+          {[...options, ...(objections.length ? [{ value: "WITHDRAW_OBJECTION", label: "Withdraw an objection", help: "Close one of your open objections." }] : [])].map((o) => (
             <label key={o.value} className={`flex cursor-pointer gap-2 rounded-lg border p-3 text-sm ${type === o.value ? "border-ink bg-slate-50" : "border-line"}`}>
               <input type="radio" name="type" value={o.value} checked={type === o.value} onChange={() => setType(o.value)} />
               <span><span className="font-medium">{o.label}</span><span className="block text-xs text-muted">{o.help}</span></span>
@@ -47,7 +48,7 @@ export function BuyerResponse({ dealId, requirements, objections }: { dealId: st
       <label className="block text-sm">Message {type === "REQUEST_REVISION" || type === "REPORT_PROBLEM" ? "(required)" : "(optional)"}
         <textarea name="message" rows={3} maxLength={2000} className="mt-1 block w-full rounded-lg border border-line px-3 py-2 text-sm" />
       </label>
-      <Submit pendingText="Recording…">Record my response</Submit>
+      <Submit pendingText={type === "ACCEPT" && heldAmount ? "Recording and asking PayPal to capture…" : "Recording…"}>{type === "ACCEPT" && heldAmount ? `Accept and release ${heldAmount} to the seller` : "Record my response"}</Submit>
       <p className="text-xs text-muted">Your response is stored as your statement in the agreement history. Opening or downloading files is never treated as acceptance. Complaints recorded here are not PayPal disputes.</p>
       <Feedback state={state} />
     </form>

@@ -39,7 +39,7 @@ export default async function Deals({ searchParams }: { searchParams: Promise<{ 
                     <span className="font-medium">{d.title}</span>
                     <span className="flex gap-2">
                       <Pill>{role}</Pill>
-                      {pay.isPaid ? <Pill tone={pay.latest?.mode === "FIXTURE" ? "review" : "agreed"}>{pay.latest?.mode === "FIXTURE" ? "Paid (fixture)" : "Paid (sandbox)"}</Pill> : pay.latest ? <Pill tone="review">{pay.latest.status}</Pill> : <Pill>Not paid</Pill>}
+                      {pay.isPaid ? <Pill tone={pay.latest?.mode === "FIXTURE" ? "review" : "agreed"}>{pay.latest?.mode === "FIXTURE" ? "Paid (fixture)" : "Paid (sandbox)"}</Pill> : pay.isHeld ? <Pill tone={pay.latest?.mode === "FIXTURE" ? "review" : "observed"}>{pay.latest?.mode === "FIXTURE" ? "Held (fixture)" : "Held by PayPal (sandbox)"}</Pill> : pay.latest ? <Pill tone="review">{pay.latest.status}</Pill> : <Pill>Not paid</Pill>}
                       {d._count.deliveries > 0 && <Pill tone="observed">{d._count.deliveries} deliver{d._count.deliveries === 1 ? "y" : "ies"}</Pill>}
                     </span>
                   </div>

@@ -6,7 +6,7 @@ One Next.js 16 application (App Router, TypeScript) with server components, serv
 Browser ──► Next.js server ──► Prisma ──► SQLite / libSQL
               │   ├─ Better Auth (sessions, password hashing, origin checks)
               │   ├─ Anthropic API (brief proposal only)
-              │   └─ PayPal REST: OAuth, Orders v2 create/get/capture, Payments v2 get capture
+              │   └─ PayPal REST: OAuth, Orders v2 create/get/authorize/capture, Payments v2 authorization get/capture/void, capture get
               ▲
 PayPal ───────┘ webhooks (signature self-verified on the raw body)
 ```
@@ -17,8 +17,9 @@ PayPal ───────┘ webhooks (signature self-verified on the raw bod
 |---|---|---|
 | Pasted brief / conversation | Untrusted data; stored unchanged with SHA-256 | `createDeal`, AI prompt, `validateExtraction` |
 | AI output | A proposal; every value needs a quote that exists in the source and mentions that value | `src/lib/ai/validate.ts` |
-| Browser requests | Untrusted; price, currency, merchant and version are never read from them | `createCheckout`, `capturePayment` |
-| PayPal API responses | Authoritative for payment state, after amount/currency/custom_id/invoice_id reconciliation | `applyCaptureState` |
+| Browser requests | Untrusted; price, currency, merchant and version are never read from them | `createCheckout`, `authorizePayment`, `capturePayment` |
+| Capture / release of a hold | Allowed only by deterministic rules re-checked on the server | `src/lib/hold-rules.ts`, `src/lib/services/hold.ts` |
+| PayPal API responses | Authoritative for payment state, after amount/currency/custom_id/invoice_id reconciliation | `applyAuthorizationState`, `applyCaptureState` |
 | PayPal webhooks | Authoritative only after signature verification; idempotent by event id | `/api/paypal/webhook`, `processVerifiedWebhook` |
 | Uploaded files | Untrusted bytes; type from magic bytes; never rendered inline; served as attachments with `CSP: sandbox` | `src/lib/files/inspect.ts`, `/api/files/[id]` |
 
@@ -26,9 +27,9 @@ PayPal ───────┘ webhooks (signature self-verified on the raw bod
 
 - `Deal` — seller, buyer (joins via single-use hashed invite token), soft-delete flag.
 - `SourceDocument` — immutable pasted text (`S1`), SHA-256.
-- `BriefVersion` — immutable canonical JSON + content hash. Edits create a new version and mark the old one superseded. `lockedAt` is set when a capture COMPLETES. After payment, changes are `AMENDMENT` versions.
+- `BriefVersion` — immutable canonical JSON + content hash. Edits create a new version and mark the old one superseded. `lockedAt` is set when the agreement is funded: a hold (authorization) is CREATED, or a capture COMPLETES. After payment, changes are `AMENDMENT` versions.
 - `Approval` — (version, user, role, contentHash). Counts only if the hash still matches and the version is current.
-- `Payment` — one row per checkout attempt: approved version + hash, amount in minor units, `createRequestId` / `captureRequestId` (sent as `PayPal-Request-Id`), PayPal order and capture IDs, status, gross/fee/net, hashed payer id.
+- `Payment` — one row per checkout attempt: approved version + hash, `intent` (AUTHORIZE = held at checkout, the default; CAPTURE = paid at checkout), amount in minor units, `createRequestId` / `authorizeRequestId` / `captureRequestId` / `voidRequestId` (sent as `PayPal-Request-Id`), PayPal order, authorization and capture IDs, hold expiry, capture trigger, status, gross/fee/net, hashed payer id.
 - `WebhookEvent` — PayPal event id as primary key (dedupe), outcome.
 - `Delivery`, `DeliveryFile` (+ `FileBlob`), `CheckResult` — files with SHA-256, detected type, dimensions, safety notes; check snapshot at submission.
 - `BuyerAction` — ACKNOWLEDGE_RECEIPT, ACCEPT, REQUEST_REVISION, REPORT_PROBLEM, WITHDRAW_OBJECTION.
@@ -45,6 +46,24 @@ PayPal ───────┘ webhooks (signature self-verified on the raw bod
 
 ## Payment state machine
 
+Default (`CHECKOUT_INTENT=AUTHORIZE`): hold at checkout, capture on acceptance.
+
+```
+INITIATED ─create order intent AUTHORIZE─► ORDER_CREATED ─buyer approves in PayPal (not payment)─►
+   authorize: GET order → verify APPROVED + amount/IDs → POST /authorize (stable PayPal-Request-Id)
+            ├─ CREATED ──► AUTHORIZED (funded: version locked, deliveries open; nothing captured)
+            ├─ PENDING ──► AUTHORIZATION_PENDING (not funded)   ├─ DENIED ──► AUTHORIZATION_DENIED
+            └─ amount mismatch ──► MISMATCH
+AUTHORIZED ─buyer ACCEPTs latest delivery──────────────────────────────► capture (final, full amount)
+           ─seller, review window passed, all checks met, no objection─► capture
+           ─seller cancels (reason recorded) / buyer after missed deadline with nothing delivered─► VOIDED
+           ─PayPal says expired/voided at capture time─► EXPIRED / VOIDED (never paid)
+capture ─► COMPLETED / CAPTURE_PENDING / DECLINED (same states and webhooks as below)
+Webhooks: PAYMENT.AUTHORIZATION.CREATED / VOIDED (a late event never undoes a capture)
+```
+
+Capture at checkout (`CHECKOUT_INTENT=CAPTURE`, and payments made before 10 Nov):
+
 ```
 INITIATED ─create order (PayPal-Request-Id)─► ORDER_CREATED ─buyer approves in PayPal (not payment)─►
    capture: GET order → verify APPROVED + amount/currency/custom_id/invoice_id
@@ -59,7 +78,7 @@ Webhooks: PAYMENT.CAPTURE.COMPLETED/PENDING/DENIED/DECLINED/REFUNDED/REVERSED, C
 COMPLETED ─refund/reversal webhook─► REFUNDED / PARTIALLY_REFUNDED / REVERSED (no longer shown as paid)
 ```
 
-Retries: a repeated create reuses the same `Payment` row and request id; a repeated capture uses the same capture request id; `ORDER_ALREADY_CAPTURED` triggers a GET and reconciliation.
+Retries: a repeated create reuses the same `Payment` row and request id; repeated authorize/capture/void calls reuse their request ids (so a buyer acceptance and a seller capture racing each other produce one capture); `ORDER_ALREADY_CAPTURED` / `ORDER_ALREADY_AUTHORIZED` trigger a GET and reconciliation. PayPal guarantees held funds for 3 days (honor period) and keeps a hold for 29 days; reauthorization is not built.
 
 ## Delivery checks (`src/lib/services/checks.ts`)
 

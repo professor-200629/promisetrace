@@ -10,9 +10,9 @@ Everything here was run on the author's Windows 11 laptop (Node 24.14). "Mock" m
 | Lint | `npm run lint` | pass, 0 errors, 0 warnings |
 | Production build | `npm run build` | pass (Next.js 16.4.5, Turbopack), 17 routes |
 
-## 2. Automated tests (mock PayPal, real SQLite) — 8 Nov 2026
+## 2. Automated tests (mock PayPal, real SQLite) — 8 Nov 2026, extended 10 Nov 2026
 
-`npm test` → **33 passed, 0 failed** (2 files, about 5 s).
+`npm test` → **57 passed, 0 failed** (4 files, about 10 s) on 10 Nov, after the hold-at-checkout flow was added (33 on 8 Nov). Tests that exercise capture-at-checkout pass `intent: "CAPTURE"` explicitly; the default hold flow is tested in `tests/integration/holds.test.ts` and `tests/unit/hold-rules.test.ts`.
 
 Failure cases the brief asked for, and where they are tested (`tests/integration/flow.test.ts`, `tests/unit/core.test.ts`):
 
@@ -35,8 +35,19 @@ Failure cases the brief asked for, and where they are tested (`tests/integration
 | Acknowledge ≠ accept; objections persist until withdrawn | `buyer responses and the record…` | service |
 | Export has valid source passages, no emails or payer IDs; tampering breaks the hash chain | `exports a record…` | service |
 | Extraction keeps only quoted, value-matching claims; INR rejected; injected instructions cannot create unsourced values | `extraction validation › …` | pure functions |
+| **Holds (10 Nov):** an authorization funds and locks the agreement and opens delivery but captures nothing; a second checkout is refused | `hold at checkout › a PayPal authorization funds…` | mock PayPal |
+| Approval in PayPal is not a hold; stale version → authorize refused without calling PayPal; tampered hold amount → MISMATCH; PENDING/DENIED hold → not funded | `hold at checkout › …` | mock PayPal |
+| Lost authorize response reconciled with the same `PayPal-Request-Id`; the capture-at-checkout endpoint refuses a hold | `hold at checkout › a lost authorize response…`, `…refuses a hold checkout` | mock PayPal |
+| Buyer acceptance captures once even if the seller also asks (same request id); acknowledgement never captures; only the buyer can accept; outsiders get 404 | `capture on acceptance › …` | mock PayPal |
+| Hold reported EXPIRED at capture → recorded, never paid; PENDING capture of a hold → not paid | `capture on acceptance › a hold that PayPal reports expired…`, `…PENDING capture…` | mock PayPal |
+| Seller capture refused before the review window, while a requirement is not met, while an objection is open; allowed after; recorded as the seller's declaration first | `seller capture after the review window › …` | mock PayPal |
+| Seller cancel needs a reason, voids the hold, blocks capture and delivery; buyer release only after a missed deadline with nothing delivered | `releasing the hold to the buyer › …` | mock PayPal |
+| Authorization webhooks: CREATED applied once (duplicate ignored), a late CREATED after capture does not undo it, VOIDED releases, unknown hold ignored | `authorization webhooks › …` | webhook processor |
+| Rules table: honor period, expiry, acceptance of an older delivery does not count, missing deadline | `hold rules › …` | pure functions |
 
-## 3. Browser journey (Playwright, Chromium) — 8 Nov 2026
+## 3. Browser journey (Playwright, Chromium) — 8 Nov 2026, re-run 10 Nov 2026
+
+10 Nov re-run with the hold flow: **1 passed**. The buyer's fixture checkout now places a hold ("PayPal holds 300.00 USD for this agreement"), and "Accept and release 300.00 USD to the seller" captures it; the JSON export shows `flow: hold_at_checkout_capture_on_acceptance`, `status: COMPLETED`, `captureTrigger: BUYER_ACCEPTED`.
 
 `npm run build && npm run test:e2e` → **1 passed** (about 7 s of browser time). Production server, fresh database, **PayPal FIXTURE and AI FIXTURE modes**.
 
@@ -44,7 +55,7 @@ Steps: seller signs up → creates the agreement from the fictional conversation
 
 ## 4. Scripted scenarios — 8 Nov 2026
 
-`npx tsx eval/scenarios.ts` → 4/4 pass (complete delivery, missing item, ambiguous terms, approved change). See `eval/results/scenarios.md`. FIXTURE PayPal gateway; fictional data.
+`npx tsx eval/scenarios.ts` → 4/4 pass on 8 Nov; **5/5 on 10 Nov** with the hold flow (complete delivery: AUTHORIZED while delivering, COMPLETED after acceptance; missing item; ambiguous terms; approved change; new: seller cancels before delivery → VOIDED, nothing captured, deliveries closed). See `eval/results/scenarios.md`. FIXTURE PayPal gateway; fictional data.
 
 ## 5. Live PayPal sandbox
 
@@ -54,7 +65,7 @@ Steps: seller signs up → creates the agreement from the fictional conversation
 | Full browser journey against the live sandbox (production build, real Claude, Chrome) | **Pass, 8 Nov 2026, 16:42–16:56 UTC** — see below. |
 | `npm run paypal:verify` (re-read order and capture from PayPal, compare with the stored record) | **Pass**: order `8B294411574047320` COMPLETED; capture `096203045U497594X` COMPLETED, 300.00 USD, `invoice_id` `PT-77b8748d-mw82ikfx`, `custom_id` `pt:cmw8293rs0000dcuucp7aeb1n:v2`; gross 300.00 / fee 14.16 / net 285.84; "MATCH". |
 | Buyer paying with a sandbox **PayPal account** (wallet login in the popup) | **Not run.** The live payment used PayPal's **guest card** checkout with PayPal's published sandbox test Visa (4012 8888 8888 1881) and fictional billing details, because both sandbox test accounts on this developer account are in India (PayPal India does not support India-to-India payments) and creating a US test account needs the account owner. Same server-side order/capture path. |
-| Signed sandbox webhook received and verified | **Not run yet** — needs a public HTTPS URL and `PAYPAL_WEBHOOK_ID` (hosted demo). Signature verification is covered by the unit test with a throwaway certificate. |
+| Signed sandbox webhook received and verified | **Pass, 8 Nov 2026 (hosted)** — see 5b; and for holds on 10 Nov — see 5d. Signature verification is also covered by the unit test with a throwaway certificate. |
 
 ### Live sandbox journey, 8 Nov 2026 (record exported to `docs/sample-evidence/northwind-live-sandbox.{json,html}`)
 
@@ -100,6 +111,40 @@ On **https://promisetrace-sandbox.vercel.app** (same deployment; the user named 
 6. History: 18 entries, hash chain intact.
 
 Follow-up fixed after this run: the history text for a buyer-approval webhook that arrives after the capture now says the capture was already confirmed.
+
+## 5c. Authorize-then-capture feasibility (same Indian sandbox merchant) — 10 Nov 2026
+
+Question: can this merchant hold the buyer's payment at checkout and capture it only when the buyer accepts the delivery? Tested outside the app with `scripts/paypal-authorize-check.ts` (REST calls) and `scripts/paypal-authorize-page.mjs` (a local page with the PayPal JS SDK Buttons loaded with `intent=authorize`, the same button type the app uses). Fictional guest card details, PayPal's published test cards; no real money.
+
+| Step | Result |
+|---|---|
+| Create order `intent=AUTHORIZE`, $10.00 USD | HTTP 201, order `5K770871YG781454F` CREATED |
+| Buyer approval through JS SDK "Debit or Credit Card" (test Visa) | `onApprove` fired; order status APPROVED |
+| `POST /v2/checkout/orders/{id}/authorize` | HTTP 201; authorization `33533414BB626663L` **CREATED**, $10.00, expires **2026-12-09T11:31:38Z** (29 days) |
+| `POST /v2/payments/authorizations/{id}/capture` $6.00, `final_capture: false` | HTTP 201; capture `9FK5866029227804X` **COMPLETED** $6.00; authorization PARTIALLY_CAPTURED |
+| `POST /v2/payments/authorizations/{id}/void` | HTTP 200; authorization **VOIDED** |
+| Capture $1.00 after the void | HTTP 422 `AUTHORIZATION_VOIDED` (refused, as expected) |
+
+Result: **authorize, partial capture and void all work for this merchant** on the JS SDK path.
+
+What did not work, recorded as found: PayPal's *redirect* checkout page (`checkoutnow?token=…`, guest card form) refused both test cards ("We weren't able to add this card") for an AUTHORIZE order **and** for a CAPTURE control order, so the refusal comes from that page, not from the intent. The app does not use that page.
+
+Not tested yet: the honor period (PayPal's documentation says funds are only guaranteed for 3 days after authorizing; capturing later may fail) and reauthorization. The `PAYMENT.AUTHORIZATION.*` webhooks were tested on the hosted app in 5d.
+
+## 5d. Hosted journey with a held payment — 10 Nov 2026, 11:54–12:01 UTC
+
+Same Vercel deployment and Turso database (additive migration `20261110000000_payment_holds` applied first); webhook `5KH82963RX958642Y` extended with `PAYMENT.AUTHORIZATION.CREATED` and `PAYMENT.AUTHORIZATION.VOIDED` (12 events). Demo accounts in Chrome; buyer paid with the JS SDK guest card form (PayPal test Visa, fictional US details).
+
+1. Live Claude extraction: 3,541 tokens, about $0.0216, 7.2 s; 11/11 claims kept; one open question (palette), approved knowingly.
+2. Buyer joined, both approved version 1.
+3. Checkout with `intent=AUTHORIZE`: order `6WJ57592AV292201X`; authorization `244006074A973950A` **CREATED**, 300.00 USD held until 2026-12-09 11:58 UTC; status AUTHORIZED, version locked, nothing captured.
+4. Seller delivered concepts + final PNG → "Not met yet: Final logo files: SVG"; the seller's capture button was refused ("The buyer has until 2026-11-15 … to review delivery 2"); seller added the SVG → 4 checks met.
+5. Buyer chose Accept → "Accept and release 300.00 USD to the seller" → capture `37S43228146842457` **COMPLETED**, 300.00 / 14.16 / 285.84 USD, recorded as "captured because the buyer accepted the delivery".
+6. Signed webhooks received and self-verified (hosted `WebhookEvent` rows, `verified = 1`, method SELF, outcome APPLIED, no duplicate history entries): `CHECKOUT.ORDER.APPROVED`, `PAYMENT.AUTHORIZATION.CREATED`, `PAYMENT.CAPTURE.COMPLETED`.
+7. History: 17 entries, hash chain intact, in order: hold → deliveries → checks → buyer acceptance → capture.
+8. `npm run paypal:verify` against the hosted database: order COMPLETED; capture COMPLETED 300.00 USD with our `invoice_id` and `custom_id`; authorization **CAPTURED** 300.00 USD; trigger BUYER_ACCEPTED → **MATCH**.
+
+Found and fixed after this run: the stored authorization status stayed "CREATED" after the capture (PayPal reports CAPTURED; the app now re-reads the authorization after capturing), and a "Z UTC" time format. The row from this run still shows the old stored value. Not run live in the app: the seller cancel / buyer release (void) path — the void API itself passed live in 5c and the app path is covered by mock tests.
 
 ## 6. Live AI
 

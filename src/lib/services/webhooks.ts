@@ -1,7 +1,7 @@
 import type { Db } from "@/lib/db";
 import { appendEvent } from "@/lib/services/events";
-import { applyCaptureState } from "@/lib/services/payments";
-import type { PayPalCapture, PayPalGateway } from "@/lib/paypal/gateway";
+import { applyAuthorizationState, applyCaptureState } from "@/lib/services/payments";
+import type { PayPalAuthorization, PayPalCapture, PayPalGateway } from "@/lib/paypal/gateway";
 
 type WebhookBody = {
   id?: string;
@@ -87,16 +87,40 @@ export async function processVerifiedWebhook(db: Db, rawBody: string, opts: { tr
     return finish("APPLIED");
   }
 
+  if (type.startsWith("PAYMENT.AUTHORIZATION.")) {
+    // Resource is the authorization (hold). Match it by authorization id, then by order id.
+    const orderId = ((resource.supplementary_data as { related_ids?: { order_id?: string } } | undefined)?.related_ids?.order_id) ?? null;
+    const payment =
+      (resourceId ? await db.payment.findUnique({ where: { authorizationId: resourceId } }) : null) ??
+      (orderId ? await db.payment.findUnique({ where: { paypalOrderId: orderId } }) : null);
+    if (!payment || payment.intent !== "AUTHORIZE") return finish("NO_MATCH", `No held payment for authorization ${resourceId ?? "?"} / order ${orderId ?? "?"}`);
+    let auth = resource as unknown as PayPalAuthorization;
+    if (opts.gateway && resourceId && opts.gateway.mode === "SANDBOX") {
+      try {
+        auth = await opts.gateway.getAuthorization(resourceId);
+      } catch {
+        /* fall back to the signed webhook body */
+      }
+    }
+    try {
+      await applyAuthorizationState(db, payment, auth, { actorId: null, source: `webhook ${type} (${body.id})` });
+    } catch (e) {
+      return finish("APPLIED", `Recorded with problem: ${e instanceof Error ? e.message : "error"}`);
+    }
+    return finish("APPLIED");
+  }
+
   if (type === "CHECKOUT.ORDER.APPROVED") {
     const payment = resourceId ? await db.payment.findUnique({ where: { paypalOrderId: resourceId } }) : null;
     if (!payment) return finish("NO_MATCH");
     const fresh = await db.payment.findUnique({ where: { id: payment.id } });
-    const captured = fresh?.status === "COMPLETED";
+    const hold = payment.intent === "AUTHORIZE";
+    const settled = hold ? !!fresh && fresh.status !== "ORDER_CREATED" && fresh.status !== "INITIATED" : fresh?.status === "COMPLETED";
     await db.$transaction((tx) => appendEvent(tx, { dealId: payment.dealId, type: "PAYPAL_BUYER_APPROVED", kind: "PAYPAL_CONFIRMED", actorRole: "PAYPAL",
-      summary: captured
-        ? `Signed PayPal webhook confirms the buyer approved order ${resourceId} (the capture had already been confirmed).`
-        : `PayPal reports the buyer approved order ${resourceId}. Approval is not payment; capture is still required.`,
-      data: { orderId: resourceId, webhookEvent: body.id, alreadyCaptured: captured } }));
+      summary: settled
+        ? `Signed PayPal webhook confirms the buyer approved order ${resourceId} (the ${hold ? "hold" : "capture"} had already been confirmed).`
+        : `PayPal reports the buyer approved order ${resourceId}. Approval is not payment; ${hold ? "the hold (authorization)" : "capture"} is still required.`,
+      data: { orderId: resourceId, webhookEvent: body.id, alreadySettled: settled } }));
     return finish("APPLIED");
   }
 

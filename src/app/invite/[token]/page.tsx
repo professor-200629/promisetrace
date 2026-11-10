@@ -18,7 +18,7 @@ export default async function Invite({ params }: { params: Promise<{ token: stri
         ) : (
           <div className="space-y-4 text-sm">
             <p><strong>{deal.seller.name}</strong> invited you to review <strong>{deal.title}</strong> as the buyer.</p>
-            <p className="text-muted">You will see the proposed brief and the exact source text it came from. Nothing is agreed until both of you approve the same version, and nothing is paid until PayPal confirms a capture.</p>
+            <p className="text-muted">You will see the proposed brief and the exact source text it came from. Nothing is agreed until both of you approve the same version, and PayPal only holds the payment at checkout: it is captured for the seller when you accept the delivery.</p>
             {user ? (
               <>
                 <p>Signed in as {user.name}.</p>

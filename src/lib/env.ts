@@ -27,6 +27,10 @@ const EnvSchema = z.object({
   PAYPAL_CLIENT_SECRET: z.string().optional(),
   PAYPAL_WEBHOOK_ID: z.string().optional(),
   PAYPAL_MODE: z.enum(["sandbox", "fixture"]).default("sandbox"),
+  /** AUTHORIZE: hold the payment at checkout and capture it when the buyer accepts. CAPTURE: take it at checkout. */
+  CHECKOUT_INTENT: z.enum(["AUTHORIZE", "CAPTURE"]).default("AUTHORIZE"),
+  /** Days after a delivery before the seller may capture a held payment without a buyer response (all checks met, no open objections). */
+  REVIEW_WINDOW_DAYS: intFrom(5),
   AI_PROVIDER: z.enum(["anthropic", "fixture"]).default("anthropic"),
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default("claude-opus-5-5"),

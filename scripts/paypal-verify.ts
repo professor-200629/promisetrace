@@ -21,7 +21,18 @@ async function main() {
   console.log(`Stored : order ${p.paypalOrderId} capture ${p.captureId} ${p.status} ${formatMoney(p.amountMinor, p.currency)} invoice ${p.invoiceId} custom ${p.customId}`);
   console.log(`PayPal : order ${order.id} ${order.status}; capture ${cap.id} ${cap.status} ${cap.amount?.value} ${cap.amount?.currency_code} invoice ${cap.invoice_id} custom ${cap.custom_id}`);
   console.log(`         gross ${b?.gross_amount?.value} fee ${b?.paypal_fee?.value} net ${b?.net_amount?.value} · created ${cap.create_time}`);
-  const ok = cap.status === "COMPLETED" && sameAmount(p.amountMinor, p.currency, cap.amount) && cap.invoice_id === p.invoiceId && cap.custom_id === p.customId;
+  let holdOk = true;
+  if (p.intent === "AUTHORIZE") {
+    // Held at checkout, captured on acceptance: the authorization must be CAPTURED for the same amount.
+    const auth = p.authorizationId ? await gw.getAuthorization(p.authorizationId) : null;
+    console.log(`Hold   : authorization ${p.authorizationId ?? "-"} ${auth?.status ?? "?"} ${auth?.amount?.value ?? "?"} ${auth?.amount?.currency_code ?? ""} · capture trigger ${p.captureTrigger ?? "-"}`);
+    holdOk = !!auth && auth.status === "CAPTURED" && sameAmount(p.amountMinor, p.currency, auth.amount);
+  }
+  // A capture of an authorization may omit invoice_id/custom_id (the order carries them); when present they must match.
+  const idsOk = p.intent === "AUTHORIZE"
+    ? (cap.invoice_id === undefined || cap.invoice_id === p.invoiceId) && (cap.custom_id === undefined || cap.custom_id === p.customId)
+    : cap.invoice_id === p.invoiceId && cap.custom_id === p.customId;
+  const ok = cap.status === "COMPLETED" && sameAmount(p.amountMinor, p.currency, cap.amount) && idsOk && holdOk;
   console.log(ok ? "MATCH: PayPal confirms this capture exactly as recorded." : "MISMATCH: check the fields above.");
   if (!ok) process.exitCode = 1;
 }

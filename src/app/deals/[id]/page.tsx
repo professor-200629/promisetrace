@@ -16,6 +16,9 @@ import { BriefEditor } from "@/components/deal/BriefEditor";
 import { PayPalCheckout } from "@/components/deal/PayPalCheckout";
 import { DeliveryUpload } from "@/components/deal/DeliveryUpload";
 import { BuyerResponse, DeleteDeal } from "@/components/deal/BuyerResponse";
+import { HoldControls } from "@/components/deal/HoldControls";
+
+const utcMinute = (d: Date) => `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +90,12 @@ export default async function DealPage({ params, searchParams }: { params: Promi
 
 function StatusTiles({ view }: { view: DealView }) {
   const p = view.payment.latest;
-  const paidText = view.payment.isPaid ? (p?.mode === "FIXTURE" ? "Paid — FIXTURE, not a PayPal transaction" : "Paid — PayPal sandbox capture COMPLETED") : p ? `Payment: ${p.status.replace(/_/g, " ").toLowerCase()}` : "Not paid";
+  const fixture = p?.mode === "FIXTURE";
+  const paidText = view.payment.isPaid
+    ? (fixture ? "Paid — FIXTURE, not a PayPal transaction" : p?.intent === "AUTHORIZE" ? "Paid — held payment captured (PayPal sandbox)" : "Paid — PayPal sandbox capture COMPLETED")
+    : view.payment.isHeld
+      ? (fixture ? "Payment held — FIXTURE, not a PayPal transaction" : `Payment held by PayPal (sandbox), not captured${view.hold.expiresAt ? ` · hold expires ${utcMinute(view.hold.expiresAt)}` : ""}`)
+      : p ? `Payment: ${p.status.replace(/_/g, " ").toLowerCase()}` : "Not paid";
   return (
     <div className="grid gap-3 md:grid-cols-3">
       <div className="rounded-xl border border-agreed/25 bg-agreed-bg p-4">
@@ -121,24 +129,33 @@ function nextStep(v: DealView): { text: string; mine: boolean; tab?: string } | 
       : { text: `Review and approve version ${w.row.number}${w.row.kind === "AMENDMENT" ? " (amendment)" : ""}.`, mine: true, tab: "brief" };
   }
   const p = v.payment.latest;
-  if (!v.payment.isPaid) {
+  const held = v.payment.isHeld;
+  if (!v.payment.isFunded) {
     if (p?.status === "CAPTURE_PENDING") return { text: "PayPal reports the payment as pending. Deliveries open once PayPal completes it.", mine: false, tab: "payment" };
+    if (p?.status === "AUTHORIZATION_PENDING") return { text: "PayPal reports the hold as pending. Deliveries open once PayPal confirms it.", mine: false, tab: "payment" };
+    if (p?.status === "VOIDED") return { text: "The hold was released to the buyer and nothing was charged. This agreement is closed.", mine: false, tab: "record" };
+    if (p?.status === "EXPIRED") return { text: "PayPal's hold expired before it was captured; nothing was charged.", mine: false, tab: "payment" };
     if (p && ["REFUNDED", "REVERSED", "PARTIALLY_REFUNDED"].includes(p.status)) return { text: `PayPal reports this payment ${p.status.toLowerCase()}.`, mine: false, tab: "payment" };
-    return seller ? { text: "Waiting for the buyer to pay through PayPal.", mine: false, tab: "payment" } : { text: "Pay for the approved brief with PayPal (sandbox).", mine: true, tab: "payment" };
+    return seller ? { text: "Waiting for the buyer to pay through PayPal.", mine: false, tab: "payment" } : { text: "Pay for the approved brief with PayPal (sandbox). PayPal holds the money until you accept the delivery.", mine: true, tab: "payment" };
   }
-  if (v.deliveries.length === 0) return seller ? { text: "Upload the promised files.", mine: true, tab: "delivery" } : { text: "Waiting for the seller to deliver.", mine: false, tab: "delivery" };
+  if (v.deliveries.length === 0) return seller ? { text: held ? "PayPal holds the buyer's payment. Upload the promised files." : "Upload the promised files.", mine: true, tab: "delivery" } : { text: "Waiting for the seller to deliver.", mine: false, tab: "delivery" };
   const notMet = v.rows.filter((r) => r.result === "NOT_MET");
   if (notMet.length) return seller ? { text: `Not met yet: ${notMet.map((r) => r.label).join("; ")}. Upload the missing items.`, mine: true, tab: "delivery" } : { text: `Not met yet: ${notMet.map((r) => r.label).join("; ")}. You can report a problem or wait for the seller.`, mine: true, tab: "delivery" };
-  if (!v.acceptance || v.acceptance.type !== "ACCEPT") return seller ? { text: "All checkable items are present. Waiting for the buyer's response.", mine: false, tab: "delivery" } : { text: "Review the delivery and record your response.", mine: true, tab: "delivery" };
+  if (!v.acceptance || v.acceptance.type !== "ACCEPT") {
+    return seller
+      ? { text: held ? `All checkable items are present. The held payment is captured when the buyer accepts${v.hold.reviewEndsAt ? `; if they do not respond, you can capture it yourself from ${utcMinute(v.hold.reviewEndsAt)} while nothing is flagged` : ""}.` : "All checkable items are present. Waiting for the buyer's response.", mine: false, tab: "delivery" }
+      : { text: held ? "Review the delivery and record your response. Accepting captures the held payment for the seller." : "Review the delivery and record your response.", mine: true, tab: "delivery" };
+  }
+  if (held) return seller ? { text: "The buyer accepted, but the held payment is not captured yet. Capture it on the Payment tab.", mine: true, tab: "payment" } : { text: "You accepted. The held payment has not been captured yet; the seller can retry the capture.", mine: false, tab: "payment" };
   if (v.openObjections.length) return { text: "The buyer accepted, but an objection is still open.", mine: !seller, tab: "delivery" };
-  return { text: "Delivered, checked and accepted. Export the record for your files.", mine: false, tab: "record" };
+  return { text: v.payment.isPaid ? "Delivered, checked, accepted and paid. Export the record for your files." : "Delivered, checked and accepted. Export the record for your files.", mine: false, tab: "record" };
 }
 
 function Overview({ view, lineFor }: { view: DealView; lineFor: (r: SourceRef) => number }) {
   if (view.rows.length === 0) return <Card><p className="text-sm text-muted">No brief yet.</p></Card>;
   return (
     <div className="space-y-4">
-      <Card title="Requirement by requirement" actions={<span className="text-xs text-muted">Basis: {view.effective ? `paid${view.effective.row.kind === "AMENDMENT" ? " + amended" : ""} version ${view.effective.row.number}` : `proposed version ${view.working?.row.number ?? "?"} (not yet paid)`}</span>}>
+      <Card title="Requirement by requirement" actions={<span className="text-xs text-muted">Basis: {view.effective ? `funded${view.effective.row.kind === "AMENDMENT" ? " + amended" : ""} version ${view.effective.row.number}` : `proposed version ${view.working?.row.number ?? "?"} (not yet funded)`}</span>}>
         <p className="mb-3 text-xs text-muted"><strong className="text-agreed">Agreed</strong> = in the approved brief, linked to the source sentence. <strong className="text-observed">Observed</strong> = recorded by PromiseTrace&apos;s code or confirmed by PayPal&apos;s API. Results never come from the AI.</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse text-left text-sm">
@@ -220,7 +237,7 @@ function BriefTab({ view, inviteToken, lineFor, saved }: { view: DealView; invit
               </div>
             )}
             <BriefEditor key={w.row.id} dealId={view.deal.id} versionId={w.row.id} versionNumber={Math.max(...view.versions.map((x) => x.number))} content={w.content} editable={editable} refLines={refLines}
-              lockedReason={isLockedOriginal ? "This version is the paid agreement and cannot change. Use “Propose an amendment” to agree a change; the paid record stays as it is." : isAgreedAmendment ? "Both sides agreed this amendment. Start a new amendment for further changes." : undefined} />
+              lockedReason={isLockedOriginal ? "This version is the funded agreement (paid, or held by PayPal) and cannot change. Use “Propose an amendment” to agree a change; the funded record stays as it is." : isAgreedAmendment ? "Both sides agreed this amendment. Start a new amendment for further changes." : undefined} />
           </Card>
         )}
       </div>
@@ -243,14 +260,14 @@ function BriefTab({ view, inviteToken, lineFor, saved }: { view: DealView; invit
           </Card>
         )}
         {view.paidVersionId && (!w || w.row.lockedAt || (w.row.kind === "AMENDMENT" && view.versions.find((x) => x.id === w.row.id)?.approved)) && (
-          <Card title="Change after payment"><p className="mb-3 text-sm text-muted">Paid agreements are never edited. An amendment is a new version both sides approve; delivery is then checked against it.</p><AmendmentForm dealId={view.deal.id} /></Card>
+          <Card title="Change after payment"><p className="mb-3 text-sm text-muted">Funded agreements are never edited. An amendment is a new version both sides approve; delivery is then checked against it.</p><AmendmentForm dealId={view.deal.id} /></Card>
         )}
         <Card title="Versions">
           <ol className="space-y-2 text-xs">
             {[...view.versions].reverse().map((v) => (
               <li key={v.id} className="rounded-lg border border-line p-2">
                 <div className="flex flex-wrap items-center gap-1"><strong>v{v.number}</strong> <Pill>{v.kind === "AMENDMENT" ? "Amendment" : "Original"}</Pill> <Pill tone={v.origin === "AI_PROPOSED" ? "ai" : "neutral"}>{v.origin === "AI_PROPOSED" ? "Proposed" : v.origin === "EDITED" ? "Edited" : "Manual"}</Pill>
-                  {v.lockedAt && <Pill tone="agreed">Paid · locked</Pill>}{v.approved && !v.lockedAt && <Pill tone="agreed">Approved by both</Pill>}{v.supersededAt && <Pill>Superseded</Pill>}</div>
+                  {v.lockedAt && <Pill tone="agreed">Funded · locked</Pill>}{v.approved && !v.lockedAt && <Pill tone="agreed">Approved by both</Pill>}{v.supersededAt && <Pill>Superseded</Pill>}</div>
                 <div className="mt-1 text-muted">{fmtTime(v.createdAt)} · {shortHash(v.contentHash)}</div>
               </li>
             ))}
@@ -265,46 +282,74 @@ function PaymentTab({ view }: { view: DealView }) {
   const setup = paypalSetup();
   const w = view.working;
   const p = view.payment.latest;
-  const canPay = view.role === "BUYER" && w && w.row.kind === "ORIGINAL" && !w.row.lockedAt && view.workingApproved && !view.payment.isPaid && p?.status !== "CAPTURE_PENDING";
+  const h = view.hold;
+  const intent = env().CHECKOUT_INTENT;
+  const blockingStatus = p && ["CAPTURE_PENDING", "AUTHORIZATION_PENDING"].includes(p.status);
+  const canPay = view.role === "BUYER" && w && w.row.kind === "ORIGINAL" && !w.row.lockedAt && view.workingApproved && !view.payment.isFunded && !blockingStatus;
   const price = w?.content.price;
   const amountLabel = price?.amountMinor != null && price.currency ? formatMoney(price.amountMinor, price.currency) : "";
+  const isHoldFlow = p?.intent === "AUTHORIZE";
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
       <div className="space-y-4">
         {setup.state === "missing_credentials" && <Banner tone="bad"><strong>PayPal sandbox is not configured.</strong> Add {setup.missing.join(" and ")} to .env (see Setup status). Checkout is disabled; nothing is simulated.</Banner>}
+        {p && h.held && (
+          <Banner tone="observed"><strong>PayPal holds {formatMoney(p.amountMinor, p.currency)} for this agreement.</strong> Nothing is captured yet. It is captured for the seller when the buyer accepts the delivery{h.expiresAt ? `; if nobody captures or releases it, PayPal's hold expires ${utcMinute(h.expiresAt)} and the money stays with the buyer` : ""}.</Banner>
+        )}
         {p && (
           <Card title="Payment record" actions={<Pill tone={p.mode === "FIXTURE" ? "review" : "agreed"}>{p.mode === "FIXTURE" ? "FIXTURE — not PayPal" : "Confirmed with PayPal sandbox API"}</Pill>}>
             <dl className="grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1 text-sm">
               <dt className="text-muted">Status</dt><dd><strong>{p.status}</strong>{p.statusReason ? ` — ${p.statusReason}` : ""}</dd>
+              <dt className="text-muted">Flow</dt><dd>{isHoldFlow ? "Hold at checkout (PayPal authorization), capture when the buyer accepts" : "Captured at checkout"}</dd>
               <dt className="text-muted">Amount</dt><dd>{formatMoney(p.amountMinor, p.currency)} (from approved version hash {shortHash(p.versionHash)})</dd>
               <dt className="text-muted">PayPal order</dt><dd className="font-mono text-xs">{p.paypalOrderId ?? "—"}</dd>
+              {isHoldFlow && <><dt className="text-muted">Authorization (hold)</dt><dd className="font-mono text-xs">{p.authorizationId ?? "—"} {p.authorizationStatus ? `(${p.authorizationStatus})` : ""}</dd></>}
+              {p.authorizedAt && <><dt className="text-muted">Held since</dt><dd>{fmtTime(p.authorizedAt)}</dd></>}
+              {h.honorEndsAt && isHoldFlow && !p.captureId && <><dt className="text-muted">Funds guaranteed until</dt><dd>{utcMinute(h.honorEndsAt)} <span className="text-xs text-muted">(PayPal&apos;s 3-day honor period; a later capture usually works but can fail)</span></dd></>}
+              {p.authorizationExpiresAt && <><dt className="text-muted">Hold expires</dt><dd>{utcMinute(p.authorizationExpiresAt)}</dd></>}
+              {p.voidedAt && <><dt className="text-muted">Hold released</dt><dd>{fmtTime(p.voidedAt)}</dd></>}
               <dt className="text-muted">Capture</dt><dd className="font-mono text-xs">{p.captureId ?? "—"} {p.captureStatus ? `(${p.captureStatus})` : ""}</dd>
+              {p.captureTrigger && p.captureId && <><dt className="text-muted">Captured because</dt><dd>{p.captureTrigger === "BUYER_ACCEPTED" ? "the buyer accepted the delivery" : "the review window passed with every check met and no open objection"}</dd></>}
               <dt className="text-muted">Invoice / custom ID</dt><dd className="font-mono text-xs">{p.invoiceId} · {p.customId}</dd>
               {p.grossValue && <><dt className="text-muted">Gross / fee / net</dt><dd>{p.grossValue} / {p.feeValue ?? "—"} / {p.netValue ?? "—"} {p.currency}</dd></>}
               {p.completedAt && <><dt className="text-muted">Completed</dt><dd>{fmtTime(p.completedAt)}</dd></>}
             </dl>
           </Card>
         )}
-        {canPay && setup.state !== "missing_credentials" && (
-          <Card title="Pay with PayPal">
-            <PayPalCheckout dealId={view.deal.id} clientId={setup.state === "ready" ? env().PAYPAL_CLIENT_ID ?? null : null} currency={price!.currency!} mode={setup.state === "ready" ? "sandbox" : "fixture"} amountLabel={amountLabel} />
+        {p && h.held && (view.role === "SELLER" || view.role === "BUYER") && (
+          <Card title="The held payment">
+            <HoldControls dealId={view.deal.id} role={view.role} amountLabel={formatMoney(p.amountMinor, p.currency)} sellerCapture={h.sellerCapture} sellerVoid={h.sellerVoid} buyerVoid={h.buyerVoid} />
+            {view.role === "BUYER" && <p className="mt-4 border-t border-line pt-3 text-xs text-muted">To pay the seller, accept the delivery on the Delivery tab. Accepting captures the held payment.</p>}
           </Card>
         )}
-        {!canPay && !view.payment.isPaid && (
-          <Card><p className="text-sm text-muted">{view.role === "SELLER" ? "Only the buyer can start checkout, after both of you approve the same version." : !view.workingApproved ? "Checkout opens after both of you approve the same version of the brief." : p?.status === "CAPTURE_PENDING" ? "PayPal reports this payment as pending. PromiseTrace updates when PayPal sends a verified webhook or the capture is re-checked." : "Checkout is not available for this version."}</p></Card>
+        {canPay && setup.state !== "missing_credentials" && (
+          <Card title={intent === "AUTHORIZE" ? "Pay with PayPal (held until you accept)" : "Pay with PayPal"}>
+            <PayPalCheckout dealId={view.deal.id} clientId={setup.state === "ready" ? env().PAYPAL_CLIENT_ID ?? null : null} currency={price!.currency!} mode={setup.state === "ready" ? "sandbox" : "fixture"} amountLabel={amountLabel} intent={intent} />
+          </Card>
+        )}
+        {!canPay && !view.payment.isFunded && (
+          <Card><p className="text-sm text-muted">{
+            p?.status === "VOIDED" ? "The hold was released to the buyer (authorization VOIDED). Nothing was charged and this agreement is closed."
+            : p?.status === "EXPIRED" ? "PayPal's hold expired before it was captured. Nothing was charged."
+            : view.role === "SELLER" ? "Only the buyer can start checkout, after both of you approve the same version."
+            : !view.workingApproved ? "Checkout opens after both of you approve the same version of the brief."
+            : p?.status === "CAPTURE_PENDING" ? "PayPal reports this payment as pending. PromiseTrace updates when PayPal sends a verified webhook or the capture is re-checked."
+            : p?.status === "AUTHORIZATION_PENDING" ? "PayPal reports the hold as pending. PromiseTrace updates when PayPal sends a verified webhook."
+            : "Checkout is not available for this version."}</p></Card>
         )}
       </div>
       <aside className="space-y-3 text-sm text-muted">
         <Card title="How payment is verified">
           <ul className="list-disc space-y-1 pl-4 text-xs leading-relaxed">
             <li>The order is created on the server with the price, currency and version from the database. The browser cannot change them.</li>
-            <li>Approving in the PayPal window is not payment. Only a capture that PayPal returns as COMPLETED, with the exact amount, currency, custom ID and invoice ID, marks the agreement paid.</li>
-            <li>PENDING, DECLINED, REFUNDED and REVERSED are shown as such and are never treated as paid.</li>
-            <li>Create and capture calls carry a PayPal-Request-Id, so a retried click cannot create a second order or capture.</li>
+            <li>Approving in the PayPal window is not payment. The agreement counts as funded only when PayPal returns the hold (authorization) as CREATED, or a capture as COMPLETED, with the exact amount and reconciliation IDs.</li>
+            <li>A held payment is captured only when the buyer accepts, or by the seller after the {env().REVIEW_WINDOW_DAYS}-day review window if every check is met and no objection is open. The seller can cancel and release the hold; the buyer can release it if the deadline passes with nothing delivered.</li>
+            <li>PENDING, DENIED, VOIDED, EXPIRED, DECLINED, REFUNDED and REVERSED are shown as such and are never treated as paid.</li>
+            <li>Create, authorize, capture and void calls carry a PayPal-Request-Id, so a retried click cannot create a second order, hold or capture.</li>
             <li>A screenshot of a payment is not evidence here; only PayPal API responses and signed webhooks are.</li>
           </ul>
         </Card>
-        <p className="text-xs">This is ordinary single-merchant PayPal Checkout in the sandbox. PromiseTrace never holds funds, and its records do not decide PayPal claims or Seller Protection.</p>
+        <p className="text-xs">This is ordinary single-merchant PayPal Checkout in the sandbox. PromiseTrace never holds funds: a hold is a PayPal authorization on the buyer&apos;s payment method. Its records do not decide PayPal claims or Seller Protection.</p>
       </aside>
     </div>
   );
@@ -317,10 +362,10 @@ function DeliveryTab({ view }: { view: DealView }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
       <div className="space-y-4">
-        {view.role === "SELLER" && view.payment.isPaid && brief && (
+        {view.role === "SELLER" && view.payment.isFunded && brief && (
           <Card title="Submit a delivery"><DeliveryUpload dealId={view.deal.id} deliverables={brief.deliverables.map((d) => ({ key: d.key, label: d.label, formats: d.formats, quantity: d.quantity }))} maxMb={Math.round(e.MAX_UPLOAD_BYTES / 1048576)} /></Card>
         )}
-        {!view.payment.isPaid && <Card><p className="text-sm text-muted">Deliveries open after PayPal confirms a COMPLETED capture.</p></Card>}
+        {!view.payment.isFunded && <Card><p className="text-sm text-muted">Deliveries open after PayPal confirms the hold (authorization) or a COMPLETED capture.</p></Card>}
         {[...view.deliveries].reverse().map((d) => (
           <Card key={d.id} title={`Delivery ${d.number}`} actions={<span className="text-xs text-muted">received {fmtTime(d.submittedAt)} (server time)</span>}>
             {d.note && <p className="mb-3 text-sm"><Pill>Seller&apos;s statement</Pill> <span className="ml-1">“{d.note}”</span></p>}
@@ -345,7 +390,7 @@ function DeliveryTab({ view }: { view: DealView }) {
       </div>
       <aside className="space-y-4">
         {view.role === "BUYER" && view.deliveries.length > 0 && (
-          <Card title="Respond"><BuyerResponse dealId={view.deal.id} requirements={requirementOptions} objections={view.buyerActions.filter((a) => view.openObjections.includes(a.id)).map((a) => ({ id: a.id, label: `${actionLabel(a.type)}: ${a.message.slice(0, 60)}` }))} /></Card>
+          <Card title="Respond"><BuyerResponse dealId={view.deal.id} requirements={requirementOptions} heldAmount={view.hold.held && view.payment.latest ? formatMoney(view.payment.latest.amountMinor, view.payment.latest.currency) : null} objections={view.buyerActions.filter((a) => view.openObjections.includes(a.id)).map((a) => ({ id: a.id, label: `${actionLabel(a.type)}: ${a.message.slice(0, 60)}` }))} /></Card>
         )}
         <Card title="Buyer responses">
           {view.buyerActions.length === 0 ? <p className="text-sm text-muted">None yet.</p> : (

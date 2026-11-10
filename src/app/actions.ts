@@ -11,6 +11,8 @@ import { requireUser } from "@/lib/session";
 import { acceptInvite, approveVersion, createDeal, proposeInitialBrief, regenerateInvite, saveEdit, startAmendment } from "@/lib/services/briefs";
 import { recordBuyerAction, BUYER_ACTIONS } from "@/lib/services/buyer";
 import { loadDealForUser, requireRole } from "@/lib/services/access";
+import { getGateway } from "@/lib/services/payments";
+import { captureOnAcceptance, releaseHoldToBuyer, sellerCapture } from "@/lib/services/hold";
 
 export type ActionState = { error?: string; ok?: string; version?: number } | null;
 
@@ -155,8 +157,48 @@ export async function buyerAction(dealId: string, _: ActionState, form: FormData
   } catch (e) {
     return { error: errorMessage(e) };
   }
+  if (type === "ACCEPT") {
+    // Acceptance is recorded first; then the held payment (if any) is captured for the seller.
+    try {
+      const r = await captureOnAcceptance(prisma, getGateway(), dealId, user.id);
+      revalidatePath(`/deals/${dealId}`);
+      if (!r) return { ok: "Recorded." };
+      if (r.kind === "COMPLETED") return { ok: "Acceptance recorded. PayPal captured the held payment for the seller (capture COMPLETED)." };
+      if (r.kind === "PENDING") return { ok: `Acceptance recorded. PayPal reports the capture as PENDING${r.reason ? ` (${r.reason})` : ""}; it is not shown as paid until PayPal completes it.` };
+      return { error: `Acceptance recorded, but PayPal did not complete the capture (${"reason" in r ? r.reason ?? r.kind : r.kind}). The payment is not shown as paid.` };
+    } catch (e) {
+      revalidatePath(`/deals/${dealId}`);
+      return { error: `Acceptance recorded, but the held payment was not captured: ${errorMessage(e)} The seller can retry the capture from the Payment tab.` };
+    }
+  }
   revalidatePath(`/deals/${dealId}`);
   return { ok: "Recorded." };
+}
+
+export async function sellerCaptureAction(dealId: string): Promise<ActionState> {
+  const user = await requireUser();
+  try {
+    const r = await sellerCapture(prisma, getGateway(), dealId, user.id);
+    revalidatePath(`/deals/${dealId}`);
+    if (r.kind === "COMPLETED") return { ok: "PayPal captured the held payment (capture COMPLETED)." };
+    if (r.kind === "PENDING") return { ok: `PayPal reports the capture as PENDING${r.reason ? ` (${r.reason})` : ""}.` };
+    return { error: `PayPal did not complete the capture (${"reason" in r ? r.reason ?? r.kind : r.kind}).` };
+  } catch (e) {
+    revalidatePath(`/deals/${dealId}`);
+    return { error: errorMessage(e) };
+  }
+}
+
+export async function releaseHoldAction(dealId: string, _: ActionState, form: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  try {
+    await releaseHoldToBuyer(prisma, getGateway(), dealId, user.id, String(form.get("reason") ?? ""));
+  } catch (e) {
+    revalidatePath(`/deals/${dealId}`);
+    return { error: errorMessage(e) };
+  }
+  revalidatePath(`/deals/${dealId}`);
+  return { ok: "PayPal released the hold (authorization VOIDED). Nothing was captured." };
 }
 
 /** Deletes PromiseTrace's copy of an agreement (files, history, records). PayPal's records are unaffected. */

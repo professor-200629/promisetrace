@@ -32,6 +32,7 @@ async function main() {
   const D = await import("../src/lib/services/delivery");
   const U = await import("../src/lib/services/buyer");
   const E = await import("../src/lib/services/evidence");
+  const H = await import("../src/lib/services/hold");
   const { FixturePayPalGateway } = await import("../src/lib/paypal/gateway");
   const { logoBrief, LOGO_BRIEF, PNG_BYTES, SVG_BYTES } = await import("../tests/helpers");
   const { DATASET } = await import("./dataset");
@@ -49,9 +50,10 @@ async function main() {
     const v = await prisma.briefVersion.create({ data: { dealId: deal.id, number: 1, kind: "ORIGINAL", origin: "MANUAL", content: canonicalJson(content), contentHash: B.hashContent(content), createdById: seller.id } });
     await B.approveVersion(prisma, deal.id, seller.id, v.id, v.contentHash);
     await B.approveVersion(prisma, deal.id, buyer.id, v.id, v.contentHash);
+    // Default flow: PayPal holds the payment at checkout (intent AUTHORIZE); it is captured on acceptance.
     const { orderId } = await P.createCheckout(prisma, gw, deal.id, buyer.id);
-    const cap = await P.capturePayment(prisma, gw, deal.id, buyer.id, orderId);
-    return { seller, buyer, deal, cap };
+    const hold = await P.authorizePayment(prisma, gw, deal.id, buyer.id, orderId);
+    return { seller, buyer, deal, hold };
   }
 
   // 1. Complete delivery
@@ -61,12 +63,14 @@ async function main() {
       { deliverableKey: "D1", name: "c1.png", bytes: PNG_BYTES }, { deliverableKey: "D1", name: "c2.png", bytes: PNG_BYTES },
       { deliverableKey: "D2", name: "final.png", bytes: PNG_BYTES }, { deliverableKey: "D2", name: "final.svg", bytes: SVG_BYTES },
     ] });
+    const before = await P.paymentSummary(prisma, s.deal.id);
     await U.recordBuyerAction(prisma, s.deal.id, s.buyer.id, { type: "ACCEPT", message: "", requirementKeys: [] });
+    await H.captureOnAcceptance(prisma, gw, s.deal.id, s.buyer.id);
     const v = await E.buildDealView(prisma, s.deal.id, s.buyer.id);
     const files = v.rows.filter((r) => r.group === "Deliverables");
-    record("1. Complete delivery", "all file requirements met, payment COMPLETED, buyer acceptance recorded",
-      `${files.filter((r) => r.result === "MET").length}/${files.length} file requirements met; payment ${v.payment.latest?.status}; acceptance ${v.acceptance?.type ?? "none"}`,
-      files.every((r) => r.result === "MET") && v.payment.isPaid && v.acceptance?.type === "ACCEPT");
+    record("1. Complete delivery", "payment held (not captured) while delivering; all file requirements met; buyer acceptance captures it (COMPLETED)",
+      `while delivering: ${before.latest?.status}; ${files.filter((r) => r.result === "MET").length}/${files.length} file requirements met; acceptance ${v.acceptance?.type ?? "none"}; then payment ${v.payment.latest?.status} (trigger ${v.payment.latest?.captureTrigger ?? "-"})`,
+      before.latest?.status === "AUTHORIZED" && files.every((r) => r.result === "MET") && v.payment.isPaid && v.acceptance?.type === "ACCEPT" && v.payment.latest?.captureTrigger === "BUYER_ACCEPTED");
   }
   // 2. Missing item
   {
@@ -120,9 +124,21 @@ async function main() {
     ] });
     const st = await B.versionState(prisma, s.deal.id);
     const fav = r.checks.find((c) => c.requirementKey === "D3:png");
-    record("4. Approved change", "paid v1 stays unchanged; amendment approved by both; delivery checked against the amendment (favicon now required)",
+    record("4. Approved change", "funded v1 stays unchanged; amendment approved by both; delivery checked against the amendment (favicon now required)",
       `paid version deadline ${B.parseContent(st.paid!).deadline.date}; effective v${st.effective!.number} deadline ${B.parseContent(st.effective!).deadline.date}; favicon check ${fav?.result ?? "absent"}`,
       B.parseContent(st.paid!).deadline.date === "2026-11-20" && st.effective!.id === v.id && fav?.result === "FAIL");
+  }
+
+  // 5. Seller cancels before delivering: the hold is released and nothing is captured
+  {
+    const s = await paidDeal(LOGO_BRIEF, logoBrief());
+    await H.releaseHoldToBuyer(prisma, gw, s.deal.id, s.seller.id, "Client cancelled the project");
+    const sum = await P.paymentSummary(prisma, s.deal.id);
+    let blocked = "";
+    try { await D.submitDelivery(prisma, s.deal.id, s.seller.id, { note: "", files: [{ deliverableKey: "D1", name: "c1.png", bytes: PNG_BYTES }] }); } catch (e) { blocked = e instanceof Error ? e.message : "blocked"; }
+    record("5. Cancelled before delivery", "hold released (VOIDED), nothing captured, deliveries closed",
+      `payment ${sum.latest?.status}; capture ${sum.latest?.captureId ?? "none"}; delivery ${blocked ? "refused" : "allowed"}`,
+      sum.latest?.status === "VOIDED" && !sum.latest?.captureId && !!blocked);
   }
 
   mkdirSync(path.join(root, "eval", "results"), { recursive: true });
