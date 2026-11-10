@@ -1,6 +1,8 @@
 # Devpost draft — PromiseTrace
 
-> Draft for the author's review. Add the YouTube link and repository URL before submitting.
+> Draft for the author's review. Add the YouTube link before submitting.
+>
+> Repository: https://github.com/professor-200629/promisetrace · Live demo: https://promisetrace-sandbox.vercel.app
 
 ## Tagline
 

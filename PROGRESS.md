@@ -15,6 +15,11 @@ Deadline: Devpost submission closes **Thu 12 Nov 2026 12:00 PT = Fri 13 Nov 01:3
 - Live PayPal sandbox: paypal:check passed; full browser journey with real Claude and a COMPLETED sandbox capture (guest card, PayPal test Visa); missing SVG flagged and fixed; record exported to docs/sample-evidence/.
 - Fixed: explicit AI_BASE_URL (machine-wide ANTHROPIC_BASE_URL pointed to a dead local proxy).
 
+## Done (10 Nov 2026)
+
+- Public repo: https://github.com/professor-200629/promisetrace (MIT, detected by GitHub). Pre-publish checks: secret scan of full history clean; typecheck, lint, 33 tests, build, Playwright journey all pass.
+- Hosted demo: https://promisetrace-sandbox.vercel.app (Vercel + Turso), logged-in journey and real signed webhooks verified 8 Nov.
+
 ## Blocked on the author
 
 1. Optional: a US sandbox Personal account (developer dashboard) to also show the PayPal-wallet path in the video.
