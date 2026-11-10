@@ -12,7 +12,7 @@ Everything here was run on the author's Windows 11 laptop (Node 24.14). "Mock" m
 
 ## 2. Automated tests (mock PayPal, real SQLite) — 8 Nov 2026, extended 10 Nov 2026
 
-`npm test` → **57 passed, 0 failed** (4 files, about 10 s) on 10 Nov, after the hold-at-checkout flow was added (33 on 8 Nov). Tests that exercise capture-at-checkout pass `intent: "CAPTURE"` explicitly; the default hold flow is tested in `tests/integration/holds.test.ts` and `tests/unit/hold-rules.test.ts`.
+`npm test` → **67 passed, 0 failed** (5 files) on 10 Nov evening, after the hold-at-checkout flow (57) and the hardening pass (`tests/integration/hardening.test.ts`, +10) were added (33 on 8 Nov). Tests that exercise capture-at-checkout pass `intent: "CAPTURE"` explicitly; the default hold flow is tested in `tests/integration/holds.test.ts` and `tests/unit/hold-rules.test.ts`.
 
 Failure cases the brief asked for, and where they are tested (`tests/integration/flow.test.ts`, `tests/unit/core.test.ts`):
 
@@ -43,11 +43,17 @@ Failure cases the brief asked for, and where they are tested (`tests/integration
 | Seller capture refused before the review window, while a requirement is not met, while an objection is open; allowed after; recorded as the seller's declaration first | `seller capture after the review window › …` | mock PayPal |
 | Seller cancel needs a reason, voids the hold, blocks capture and delivery; buyer release only after a missed deadline with nothing delivered | `releasing the hold to the buyer › …` | mock PayPal |
 | Authorization webhooks: CREATED applied once (duplicate ignored), a late CREATED after capture does not undo it, VOIDED releases, unknown hold ignored | `authorization webhooks › …` | webhook processor |
-| Rules table: honor period, expiry, acceptance of an older delivery does not count, missing deadline | `hold rules › …` | pure functions |
+| Rules table: honor period, expiry, acceptance of an older delivery does not count, missing deadline, hold-length warning | `hold rules › …` | pure functions |
+| **Hardening (10 Nov evening):** the auth API serves only sign-in/sign-up/sign-out/session; change-password, update-user, delete-user, session revocation, password reset → 404 | `demo lockdown › the auth API serves only…` | route handler |
+| An agreement whose payment PayPal holds or captured cannot be deleted (seller → LOCKED, buyer → FORBIDDEN, outsider → 404); an unpaid one can | `demo lockdown › an agreement whose payment…` | service |
+| One account cannot use the whole day's AI budget (per-account cap before any API call) | `demo lockdown › one account cannot…` | service, no network |
+| Past PayPal's expiry time a hold is not funded: delivery, seller capture and release refused; accepting reports the expiry | `expired holds › …` | mock PayPal |
+| An objection must name an agreed requirement; a file flagged for review blocks the seller's own capture (the buyer can still accept) | `fairer rules › …` | mock PayPal |
+| One delivery's total size is capped (default 4 MiB, under Vercel's 4.5 MB body limit) | `delivery size › …` | service |
 
 ## 3. Browser journey (Playwright, Chromium) — 8 Nov 2026, re-run 10 Nov 2026
 
-10 Nov re-run with the hold flow: **1 passed**. The buyer's fixture checkout now places a hold ("PayPal holds 300.00 USD for this agreement"), and "Accept and release 300.00 USD to the seller" captures it; the JSON export shows `flow: hold_at_checkout_capture_on_acceptance`, `status: COMPLETED`, `captureTrigger: BUYER_ACCEPTED`.
+10 Nov evening re-run after hardening: **1 passed, twice in a row**; the buyer's objection is first refused in the browser until a requirement is ticked (nothing typed is lost), then recorded. Earlier 10 Nov re-run with the hold flow: **1 passed**. The buyer's fixture checkout now places a hold ("PayPal holds 300.00 USD for this agreement"), and "Accept and release 300.00 USD to the seller" captures it; the JSON export shows `flow: hold_at_checkout_capture_on_acceptance`, `status: COMPLETED`, `captureTrigger: BUYER_ACCEPTED`.
 
 `npm run build && npm run test:e2e` → **1 passed** (about 7 s of browser time). Production server, fresh database, **PayPal FIXTURE and AI FIXTURE modes**.
 
@@ -144,7 +150,19 @@ Same Vercel deployment and Turso database (additive migration `20261110000000_pa
 7. History: 17 entries, hash chain intact, in order: hold → deliveries → checks → buyer acceptance → capture.
 8. `npm run paypal:verify` against the hosted database: order COMPLETED; capture COMPLETED 300.00 USD with our `invoice_id` and `custom_id`; authorization **CAPTURED** 300.00 USD; trigger BUYER_ACCEPTED → **MATCH**.
 
-Found and fixed after this run: the stored authorization status stayed "CREATED" after the capture (PayPal reports CAPTURED; the app now re-reads the authorization after capturing), and a "Z UTC" time format. The row from this run still shows the old stored value. Not run live in the app: the seller cancel / buyer release (void) path — the void API itself passed live in 5c and the app path is covered by mock tests.
+Found and fixed after this run: the stored authorization status stayed "CREATED" after the capture (PayPal reports CAPTURED; the app now re-reads the authorization after capturing), and a "Z UTC" time format. The stored row was later corrected from PayPal with `scripts/paypal-refresh-holds.ts --apply` (PayPal: CAPTURED), and the run is exported to `docs/sample-evidence/northwind-held-payment-sandbox.{json,html}` (17 events, chain intact, no emails).
+
+## 5e. Hosted hardening checks and live cancel — 10 Nov 2026, 14:05–14:15 UTC
+
+After redeploying the hardening changes:
+
+- **Auth lockdown (live):** `POST /api/auth/change-password`, `update-user`, `delete-user`, `change-email`, `revoke-sessions`, `revoke-other-sessions`, `request-password-reset`, `list-sessions` → **404**; `GET /api/auth/get-session` → 200.
+- **Relative demo dates:** "Use the fictional logo example" produced concepts due 14 Nov and final files due 19 Nov 2026 (today + 4 / + 9 days); no hold-length warning, as expected.
+- **Live cancel journey** (demo accounts, Chrome): live Claude extraction → both approved → hold placed with the JS SDK guest card (order `4XK52912JD179643E`, authorization `2T774659P5827631N` CREATED, expires 2026-12-09 14:12 UTC) → seller tried to delete the agreement → **refused** ("PayPal has a hold on a payment for this agreement…") → seller cancelled with a reason → authorization **VOIDED**, nothing captured, "This agreement is closed".
+- **Signed webhooks (hosted `WebhookEvent`, verified = 1, SELF, APPLIED):** `CHECKOUT.ORDER.APPROVED`, `PAYMENT.AUTHORIZATION.CREATED`, `PAYMENT.AUTHORIZATION.VOIDED`.
+- History: 12 entries, chain intact; the seller's cancellation (USER_DECLARATION) is recorded before PayPal's VOIDED confirmation.
+
+Still not run live: a buyer paying with a sandbox **PayPal wallet** account (the developer account's sandbox accounts are Indian; a US sandbox Personal account has to be created by the account owner), seller capture after the review window (needs 5 real days), reauthorization (not built), refunds and disputes.
 
 ## 6. Live AI
 

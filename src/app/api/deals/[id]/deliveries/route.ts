@@ -10,7 +10,7 @@ export const POST = route<{ params: Promise<{ id: string }> }>(async (req, ctx, 
   const { id } = await ctx.params;
   const e = env();
   const len = Number(req.headers.get("content-length") ?? "0");
-  if (len > e.MAX_UPLOAD_BYTES * e.MAX_FILES_PER_DELIVERY + 64 * 1024) throw new AppError("INVALID", "Upload is too large.");
+  if (len > e.MAX_DELIVERY_BYTES + 64 * 1024) throw new AppError("INVALID", `One delivery can be at most ${(e.MAX_DELIVERY_BYTES / 1048576).toFixed(1)} MB in total. Send the rest as a second delivery.`);
   const form = await req.formData();
   const files: UploadInput[] = [];
   for (const [name, value] of form.entries()) {

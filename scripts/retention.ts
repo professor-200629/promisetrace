@@ -2,13 +2,14 @@
  * Retention clean-up (run on a schedule in hosting, or by hand):
  *  - agreements never paid and untouched for RETENTION_UNPAID_DAYS (default 30) are deleted
  *  - soft-deleted agreements are purged
- * Paid agreements are kept until a participant deletes them.
+ * Agreements for which PayPal held or moved money (holds included) are never purged.
  *
  *   npm run retention            # dry run
  *   npm run retention -- --apply # actually delete
  */
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
+import { DELETABLE_PAYMENT_STATUSES } from "../src/lib/services/deals";
 
 async function main() {
   const apply = process.argv.includes("--apply");
@@ -16,10 +17,9 @@ async function main() {
   const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000);
   const candidates = await prisma.deal.findMany({
     where: {
-      OR: [
-        { deletedAt: { not: null } },
-        { updatedAt: { lt: cutoff }, payments: { none: { status: { in: ["COMPLETED", "CAPTURE_PENDING", "REFUNDED", "PARTIALLY_REFUNDED", "REVERSED"] } } } },
-      ],
+      // Never purge an agreement for which PayPal held or moved money (holds included).
+      payments: { none: { status: { notIn: DELETABLE_PAYMENT_STATUSES } } },
+      OR: [{ deletedAt: { not: null } }, { updatedAt: { lt: cutoff } }],
     },
     select: { id: true, title: true, updatedAt: true },
   });

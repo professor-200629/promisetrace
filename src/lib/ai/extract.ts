@@ -62,9 +62,18 @@ export async function proposeBrief(db: Db, args: { dealId: string | null; title:
   if (setup.provider === "anthropic") {
     const since = new Date();
     since.setUTCHours(0, 0, 0, 0);
-    const used = await db.aiRun.count({ where: { provider: "anthropic", createdAt: { gte: since }, status: { notIn: ["BUDGET_BLOCKED", "NOT_CONFIGURED"] } } });
+    const counted = { provider: "anthropic", createdAt: { gte: since }, status: { notIn: ["BUDGET_BLOCKED", "NOT_CONFIGURED"] } };
+    const used = await db.aiRun.count({ where: counted });
     if (used >= e.AI_DAILY_CALL_LIMIT) {
       return fail("BUDGET_BLOCKED", "anthropic", setup.model, `Daily AI call limit (${e.AI_DAILY_CALL_LIMIT}) reached. Fill the brief manually or raise AI_DAILY_CALL_LIMIT.`);
+    }
+    // Per-account cap, so one account (or one visitor on a shared demo account) cannot use the whole day's budget.
+    const sellerId = args.dealId ? (await db.deal.findUnique({ where: { id: args.dealId }, select: { sellerId: true } }))?.sellerId : null;
+    if (sellerId) {
+      const mine = await db.aiRun.count({ where: { ...counted, deal: { sellerId } } });
+      if (mine >= e.AI_DAILY_CALL_LIMIT_PER_USER) {
+        return fail("BUDGET_BLOCKED", "anthropic", setup.model, `This account's daily AI limit (${e.AI_DAILY_CALL_LIMIT_PER_USER} extractions) is reached. Fill the brief manually, or try again tomorrow.`);
+      }
     }
   }
 

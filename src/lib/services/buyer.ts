@@ -34,6 +34,10 @@ export async function recordBuyerAction(db: Db, dealId: string, userId: string, 
   const brief = st.effective ? parseContent(st.effective) : null;
   const validKeys = new Set(["deadline", "price", "revisions", ...(brief?.deliverables.map((d) => d.key) ?? [])]);
   const keys = [...new Set(input.requirementKeys.filter((k) => validKeys.has(k)))].slice(0, 12);
+  // An objection blocks the seller's own capture, so it must say which agreed requirement it is about.
+  if ((input.type === "REQUEST_REVISION" || input.type === "REPORT_PROBLEM") && keys.length === 0) {
+    throw new AppError("INVALID", "Choose which agreed requirement this is about, so the seller knows what to fix.");
+  }
 
   let refersTo: string | null = null;
   if (input.type === "WITHDRAW_OBJECTION") {

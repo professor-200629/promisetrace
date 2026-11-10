@@ -14,9 +14,23 @@ const OPTIONS = [
 export function BuyerResponse({ dealId, requirements, objections, heldAmount }: { dealId: string; requirements: Array<{ key: string; label: string }>; objections: Array<{ id: string; label: string }>; heldAmount: string | null }) {
   const [state, action] = useActionState(buyerAction.bind(null, dealId), null);
   const [type, setType] = useState("ACKNOWLEDGE_RECEIPT");
-  const options = OPTIONS.map((o) => (o.value === "ACCEPT" && heldAmount ? { ...o, help: `The delivery meets what we agreed. PayPal then captures the held ${heldAmount} for the seller.` } : o));
+  const [localError, setLocalError] = useState<string | null>(null);
+  const options = OPTIONS.map((o) => (o.value === "ACCEPT" && heldAmount ? { ...o, help: `The delivery meets what we agreed. PayPal then captures the held ${heldAmount}.` } : o));
+  const objection = type === "REQUEST_REVISION" || type === "REPORT_PROBLEM";
   return (
-    <form action={action} className="space-y-4">
+    <form
+      action={action}
+      className="space-y-4"
+      onSubmit={(e) => {
+        // Check here first: a rejected form action resets the fields, which would wipe what the buyer typed.
+        const fd = new FormData(e.currentTarget);
+        const problem = !objection ? null
+          : fd.getAll("req").length === 0 ? "Choose which agreed requirement this is about, so the seller knows what to fix."
+          : String(fd.get("message") ?? "").trim().length < 5 ? "Describe what needs to change so the seller can respond." : null;
+        setLocalError(problem);
+        if (problem) e.preventDefault();
+      }}
+    >
       <fieldset>
         <legend className="text-sm font-medium">Your response to the latest delivery</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -36,7 +50,7 @@ export function BuyerResponse({ dealId, requirements, objections, heldAmount }: 
         </label>
       )}
       <fieldset>
-        <legend className="text-sm">Which requirements does this concern? (optional)</legend>
+        <legend className="text-sm">Which requirements does this concern? {type === "REQUEST_REVISION" || type === "REPORT_PROBLEM" ? "(choose at least one)" : "(optional)"}</legend>
         <div className="mt-1 flex flex-wrap gap-2">
           {requirements.map((r) => (
             <label key={r.key} className="flex items-center gap-1 rounded border border-line px-2 py-1 text-xs">
@@ -48,9 +62,9 @@ export function BuyerResponse({ dealId, requirements, objections, heldAmount }: 
       <label className="block text-sm">Message {type === "REQUEST_REVISION" || type === "REPORT_PROBLEM" ? "(required)" : "(optional)"}
         <textarea name="message" rows={3} maxLength={2000} className="mt-1 block w-full rounded-lg border border-line px-3 py-2 text-sm" />
       </label>
-      <Submit pendingText={type === "ACCEPT" && heldAmount ? "Recording and asking PayPal to capture…" : "Recording…"}>{type === "ACCEPT" && heldAmount ? `Accept and release ${heldAmount} to the seller` : "Record my response"}</Submit>
+      <Submit pendingText={type === "ACCEPT" && heldAmount ? "Recording and asking PayPal to capture…" : "Recording…"}>{type === "ACCEPT" && heldAmount ? `Accept and capture the held ${heldAmount}` : "Record my response"}</Submit>
       <p className="text-xs text-muted">Your response is stored as your statement in the agreement history. Opening or downloading files is never treated as acceptance. Complaints recorded here are not PayPal disputes.</p>
-      <Feedback state={state} />
+      {localError ? <Feedback state={{ error: localError }} /> : <Feedback state={state} />}
     </form>
   );
 }

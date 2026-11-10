@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/session";
 import { aiSetup } from "@/lib/env";
 import { NewDealForm } from "@/components/forms";
 import { Banner, Card } from "@/components/ui";
-import { DEMO_CONVERSATION } from "@/lib/demo";
+import { demoConversation } from "@/lib/demo";
 
 export default async function NewDeal() {
   await requireUser("/deals/new");
@@ -14,7 +14,7 @@ export default async function NewDeal() {
       {ai.state === "fixture" && <Banner tone="review">AI fixture mode: a rule-based extractor (not AI) proposes the brief. Configure ANTHROPIC_API_KEY for real extraction.</Banner>}
       {ai.state === "missing_credentials" && <Banner tone="review">AI is not configured, so you will fill in the brief by hand.</Banner>}
       <Card>
-        <NewDealForm sample={DEMO_CONVERSATION} />
+        <NewDealForm sample={demoConversation()} />
       </Card>
     </div>
   );

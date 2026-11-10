@@ -30,15 +30,19 @@ export async function submitDelivery(db: Db, dealId: string, userId: string, inp
   requireRole(role, "SELLER", "submit deliveries");
   const pay = await paymentSummary(db, dealId);
   if (!pay.isFunded) {
-    throw new AppError("NOT_APPROVED", pay.latest?.status === "CAPTURE_PENDING" || pay.latest?.status === "AUTHORIZATION_PENDING"
-      ? "Payment is still pending at PayPal. Deliver after PayPal confirms it."
-      : "Deliveries open after PayPal confirms the hold (authorization) or a COMPLETED capture.");
+    throw new AppError("NOT_APPROVED", pay.holdExpired
+      ? "PayPal's hold for this agreement has expired, so nothing can be captured. Do not deliver more work against it."
+      : pay.latest?.status === "CAPTURE_PENDING" || pay.latest?.status === "AUTHORIZATION_PENDING"
+        ? "Payment is still pending at PayPal. Deliver after PayPal confirms it."
+        : "Deliveries open after PayPal confirms the hold (authorization) or a COMPLETED capture.");
   }
   const st = await versionState(db, dealId);
   if (!st.effective) throw new AppError("INVALID", "No paid agreement found.");
   const brief = parseContent(st.effective);
   if (input.files.length === 0) throw new AppError("INVALID", "Attach at least one file.");
   if (input.files.length > e.MAX_FILES_PER_DELIVERY) throw new AppError("INVALID", `At most ${e.MAX_FILES_PER_DELIVERY} files per delivery.`);
+  const totalBytes = input.files.reduce((n, f) => n + f.bytes.byteLength, 0);
+  if (totalBytes > e.MAX_DELIVERY_BYTES) throw new AppError("INVALID", `One delivery can be at most ${(e.MAX_DELIVERY_BYTES / 1048576).toFixed(1)} MB in total. Send the rest as a second delivery.`);
   const keys = new Set(brief.deliverables.map((d) => d.key));
 
   const prepared = input.files.map((f) => {

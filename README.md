@@ -20,7 +20,8 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 | Brief extraction with source validation | Built | `src/lib/ai/*`, unit tests |
 | Two-party approval and immutable versions | Built | `src/lib/services/briefs.ts`, tests |
 | PayPal order/capture/webhooks (server-side, idempotent) | Built; mock-tested and live-tested | `src/lib/services/payments.ts`, `webhooks.ts` |
-| **Hold at checkout, capture on acceptance** (authorize / capture / void) | Built 10 Nov; 24 mock tests; **live hosted run passed** (hold → buyer accepts → capture COMPLETED, signed webhooks verified) | `src/lib/hold-rules.ts`, `src/lib/services/hold.ts`, [VERIFICATION 5c–5d](docs/VERIFICATION.md) |
+| **Hold at checkout, capture on acceptance** (authorize / capture / void) | Built 10 Nov; mock-tested; **live hosted runs passed**: hold → buyer accepts → capture COMPLETED, and hold → seller cancels → VOIDED, signed webhooks verified | `src/lib/hold-rules.ts`, `src/lib/services/hold.ts`, [VERIFICATION 5c–5e](docs/VERIFICATION.md) |
+| **Single-merchant only** | Every capture goes to the one sandbox merchant account configured on the server, not to each seller | See [DEPLOYMENT](docs/DEPLOYMENT.md) → Production would need |
 | **Live PayPal sandbox payment** | Passed 8 Nov (guest card checkout, capture COMPLETED, re-verified via API) | [docs/VERIFICATION.md](docs/VERIFICATION.md), [sample record](docs/sample-evidence/) |
 | **Real Claude extraction** | Live run passed 8 Nov | `npm run ai:check`, [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Delivery checks, buyer actions, evidence export | Built | tests + Playwright journey |
@@ -54,6 +55,8 @@ Fill `.env`:
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | real sandbox checkout | developer.paypal.com → Apps & Credentials → **Sandbox** → your app |
 | `PAYPAL_WEBHOOK_ID` | webhook verification | after adding `https://<your-host>/api/paypal/webhook` to the app (subscribe to `PAYMENT.AUTHORIZATION.CREATED` / `VOIDED` too) |
 | `CHECKOUT_INTENT`, `REVIEW_WINDOW_DAYS` | payment flow | default `AUTHORIZE` (hold, capture on acceptance) and 5 days; `CAPTURE` takes the money at checkout |
+| `AI_DAILY_CALL_LIMIT`, `AI_DAILY_CALL_LIMIT_PER_USER` | AI budget | defaults 40 per day overall and 8 per account |
+| `MAX_UPLOAD_BYTES`, `MAX_DELIVERY_BYTES` | uploads | default 4 MiB per file and per delivery (Vercel rejects bodies over 4.5 MB) |
 | `ANTHROPIC_API_KEY`, `AI_MODEL` | real AI extraction | default `claude-opus-5-5`, effort `low`, daily call cap |
 
 Without credentials the app shows a clear **setup state**. For offline development only, `PAYPAL_MODE=fixture` and `AI_PROVIDER=fixture` replace PayPal and the AI with labelled stand-ins; every fixture payment and extraction is marked FIXTURE in the UI and in exports.
@@ -78,11 +81,13 @@ Without credentials the app shows a clear **setup state**. For offline developme
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js development, production build, production server |
 | `npm run typecheck` / `lint` | TypeScript and ESLint |
-| `npm test` | Vitest: 57 unit + service-level failure cases (mock PayPal, real SQLite) |
+| `npm test` | Vitest: 67 unit + service-level failure cases (mock PayPal, real SQLite) |
 | `npm run test:e2e` | Playwright browser journey (run `npm run build` first; fixture mode) |
 | `npm run paypal:check` | Live sandbox: OAuth, create order, idempotent retry, read back |
 | `npm run paypal:verify` | Re-read the latest completed capture (and, for holds, the authorization) from PayPal and compare with the stored record |
 | `npx tsx scripts/paypal-authorize-check.ts` | Live sandbox check of authorize / capture / void for your merchant (see the file header) |
+| `npx tsx scripts/paypal-refresh-holds.ts [--apply]` | Re-read every hold from PayPal and record its current status (CAPTURED, VOIDED, EXPIRED) |
+| `npx tsx scripts/export-latest.ts [dealId basename]` | Write an agreement's evidence record to `docs/sample-evidence/` |
 | `npm run eval -- --provider fixture` | Synthetic benchmark, rule-based baseline (free) |
 | `npm run eval -- --provider anthropic` | Synthetic benchmark with Claude (uses API credit) |
 | `npx tsx eval/scenarios.ts` | Four scripted end-to-end scenarios |

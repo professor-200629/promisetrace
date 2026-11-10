@@ -10,8 +10,8 @@ import { AppError, errorMessage } from "@/lib/errors";
 import { requireUser } from "@/lib/session";
 import { acceptInvite, approveVersion, createDeal, proposeInitialBrief, regenerateInvite, saveEdit, startAmendment } from "@/lib/services/briefs";
 import { recordBuyerAction, BUYER_ACTIONS } from "@/lib/services/buyer";
-import { loadDealForUser, requireRole } from "@/lib/services/access";
 import { getGateway } from "@/lib/services/payments";
+import { deleteDeal } from "@/lib/services/deals";
 import { captureOnAcceptance, releaseHoldToBuyer, sellerCapture } from "@/lib/services/hold";
 
 export type ActionState = { error?: string; ok?: string; version?: number } | null;
@@ -158,12 +158,12 @@ export async function buyerAction(dealId: string, _: ActionState, form: FormData
     return { error: errorMessage(e) };
   }
   if (type === "ACCEPT") {
-    // Acceptance is recorded first; then the held payment (if any) is captured for the seller.
+    // Acceptance is recorded first; then the held payment (if any) is captured.
     try {
       const r = await captureOnAcceptance(prisma, getGateway(), dealId, user.id);
       revalidatePath(`/deals/${dealId}`);
       if (!r) return { ok: "Recorded." };
-      if (r.kind === "COMPLETED") return { ok: "Acceptance recorded. PayPal captured the held payment for the seller (capture COMPLETED)." };
+      if (r.kind === "COMPLETED") return { ok: "Acceptance recorded. PayPal captured the held payment (capture COMPLETED)." };
       if (r.kind === "PENDING") return { ok: `Acceptance recorded. PayPal reports the capture as PENDING${r.reason ? ` (${r.reason})` : ""}; it is not shown as paid until PayPal completes it.` };
       return { error: `Acceptance recorded, but PayPal did not complete the capture (${"reason" in r ? r.reason ?? r.kind : r.kind}). The payment is not shown as paid.` };
     } catch (e) {
@@ -206,12 +206,7 @@ export async function deleteDealAction(dealId: string, _: ActionState, form: For
   const user = await requireUser();
   if (form.get("confirm") !== "DELETE") return { error: 'Type DELETE to confirm.' };
   try {
-    const { role } = await loadDealForUser(prisma, dealId, user.id);
-    requireRole(role, "SELLER", "delete this agreement");
-    await prisma.$transaction(async (tx) => {
-      await tx.payment.deleteMany({ where: { dealId } });
-      await tx.deal.delete({ where: { id: dealId } });
-    });
+    await deleteDeal(prisma, dealId, user.id);
   } catch (e) {
     if (e instanceof AppError) return { error: e.message };
     return { error: errorMessage(e) };

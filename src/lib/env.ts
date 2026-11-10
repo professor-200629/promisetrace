@@ -39,9 +39,12 @@ const EnvSchema = z.object({
   AI_MAX_OUTPUT_TOKENS: intFrom(8000),
   AI_MAX_INPUT_CHARS: intFrom(20000),
   AI_DAILY_CALL_LIMIT: intFrom(40),
+  AI_DAILY_CALL_LIMIT_PER_USER: intFrom(8),
   AI_PRICE_INPUT_PER_MTOK: numFrom(4),
   AI_PRICE_OUTPUT_PER_MTOK: numFrom(20),
-  MAX_UPLOAD_BYTES: intFrom(5 * 1024 * 1024),
+  // Vercel rejects function request/response bodies over 4.5 MB, so one file AND one delivery stay under 4 MB by default.
+  MAX_UPLOAD_BYTES: intFrom(4 * 1024 * 1024),
+  MAX_DELIVERY_BYTES: intFrom(4 * 1024 * 1024),
   MAX_FILES_PER_DELIVERY: intFrom(10),
 });
 

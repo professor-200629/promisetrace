@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { holdState, type HoldInputs } from "@/lib/hold-rules";
+import { holdLengthWarning, holdState, type HoldInputs } from "@/lib/hold-rules";
 
 const DAY = 86_400_000;
 const now = new Date("2026-11-20T12:00:00Z");
 const held = { status: "AUTHORIZED", intent: "AUTHORIZE", authorizedAt: new Date(now.getTime() - 2 * DAY), authorizationExpiresAt: new Date(now.getTime() + 27 * DAY) };
 
 function inputs(over: Partial<HoldInputs> = {}): HoldInputs {
-  return { payment: held, deliveries: [], buyerActions: [], openObjectionCount: 0, notMetCount: 0, deadlineUtc: new Date(now.getTime() + 3 * DAY), reviewWindowDays: 5, now, ...over };
+  return { payment: held, deliveries: [], buyerActions: [], openObjectionCount: 0, flaggedCount: 0, deadlineUtc: new Date(now.getTime() + 3 * DAY), reviewWindowDays: 5, now, ...over };
 }
 
 describe("hold rules", () => {
@@ -34,7 +34,7 @@ describe("hold rules", () => {
     expect(accepted.sellerCapture.allowed).toBe(true);
     const old = [{ number: 1, submittedAt: new Date(now.getTime() - 6 * DAY) }];
     expect(holdState(inputs({ deliveries: old })).sellerCapture.allowed).toBe(true);
-    expect(holdState(inputs({ deliveries: old, notMetCount: 1 })).sellerCapture.allowed).toBe(false);
+    expect(holdState(inputs({ deliveries: old, flaggedCount: 1 })).sellerCapture.allowed).toBe(false);
     expect(holdState(inputs({ deliveries: old, openObjectionCount: 2 })).sellerCapture.reason).toMatch(/2 open objections/);
   });
 
@@ -49,6 +49,19 @@ describe("hold rules", () => {
     const h = holdState(inputs({ payment: { ...held, authorizationExpiresAt: new Date(now.getTime() - 1) }, deliveries: [{ number: 1, submittedAt: new Date(now.getTime() - 10 * DAY) }] }));
     expect(h.expired).toBe(true);
     expect(h.sellerCapture).toMatchObject({ allowed: false });
+  });
+
+  it("past PayPal's expiry time the hold counts as over: nothing can be captured or released", () => {
+    const h = holdState(inputs({ payment: { ...held, authorizationExpiresAt: new Date(now.getTime() - 1) }, deadlineUtc: new Date(now.getTime() - DAY) }));
+    expect(h).toMatchObject({ held: false, expired: true });
+    expect([h.sellerCapture.allowed, h.sellerVoid.allowed, h.buyerVoid.allowed]).toEqual([false, false, false]);
+    expect(h.sellerVoid.reason).toMatch(/expired/);
+  });
+
+  it("warns before checkout when the deadline plus the review window outlasts PayPal's 29-day hold", () => {
+    expect(holdLengthWarning(new Date(now.getTime() + 10 * DAY), now, 5)).toBeNull();
+    expect(holdLengthWarning(new Date(now.getTime() + 25 * DAY), now, 5)).toMatch(/29-day hold limit/);
+    expect(holdLengthWarning(null, now, 5)).toMatch(/No deadline/);
   });
 
   it("buyer release: only after the agreed deadline, only with nothing delivered, and only if a deadline was agreed", () => {

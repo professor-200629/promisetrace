@@ -1,0 +1,562 @@
+{
+  "format": "promisetrace.evidence.v1",
+  "generatedAt": "2026-11-10T14:05:42.889Z",
+  "disclaimer": "PromiseTrace records what was agreed, paid, delivered and stated. It does not hold funds, decide PayPal claims or guarantee PayPal Seller Protection. File hashes show whether a file changed; they do not prove the work is correct.",
+  "agreement": {
+    "id": "cmwamuh93000008l1g8xjmezb",
+    "title": "Northwind Coffee logo package (held payment)",
+    "createdAt": "2026-11-10T11:54:40.215Z",
+    "seller": "Priya Nair (demo seller)",
+    "buyer": "Alex Rivera (demo buyer)"
+  },
+  "sources": [
+    {
+      "label": "S1",
+      "title": "Email thread with Alex, 6 Nov",
+      "kind": "CONVERSATION",
+      "sha256": "6524576f63b79ea7719a0aeee16a9e46c56150477bd0b836f0fa39a4625005f5",
+      "text": "From: Alex Rivera (Northwind Coffee, Portland, USA)\nTo: Priya Nair (independent designer, Bengaluru)\nDate: 6 November 2026\n\nHi Priya, thanks for the call today. To confirm what we agreed:\n\n- The price is $300 USD for the full logo package, paid through PayPal.\n- You will send two logo concepts as PNG images by November 12, 2026.\n- After I pick one, you deliver the final logo files in PNG and SVG formats.\n- The package includes two revision rounds.\n- Final files are due by November 20, 2026 at 5 PM New York time.\n\nCould you also suggest a colour palette? Not sure yet if that is part of the package.\n\nThanks,\nAlex"
+    }
+  ],
+  "versions": [
+    {
+      "number": 1,
+      "kind": "ORIGINAL",
+      "origin": "AI_PROPOSED",
+      "contentHash": "3bd2fd1f30a4ea2bff73afafbdc9048b3941ee86c9926008658f70fd08ec81f4",
+      "createdAt": "2026-11-10T11:54:47.575Z",
+      "superseded": false,
+      "paidAndLocked": true,
+      "approvals": [
+        {
+          "role": "BUYER",
+          "createdAt": "2026-11-10T11:55:42.011Z",
+          "valid": true
+        },
+        {
+          "role": "SELLER",
+          "createdAt": "2026-11-10T11:56:33.026Z",
+          "valid": true
+        }
+      ],
+      "approvedByBoth": true
+    }
+  ],
+  "agreedBrief": {
+    "title": "Northwind Coffee logo package (held payment)",
+    "price": {
+      "amountMinor": 30000,
+      "currency": "USD",
+      "refs": [
+        {
+          "source": "S1",
+          "start": 191,
+          "end": 238,
+          "quote": "The price is $300 USD for the full logo package"
+        }
+      ],
+      "status": "sourced"
+    },
+    "deadline": {
+      "date": "2026-11-20",
+      "time": "17:00",
+      "timezone": "America/New_York",
+      "refs": [
+        {
+          "source": "S1",
+          "start": 454,
+          "end": 517,
+          "quote": "Final files are due by November 20, 2026 at 5 PM New York time."
+        }
+      ],
+      "status": "sourced"
+    },
+    "revisionRounds": {
+      "count": 2,
+      "refs": [
+        {
+          "source": "S1",
+          "start": 410,
+          "end": 451,
+          "quote": "The package includes two revision rounds."
+        }
+      ],
+      "status": "sourced"
+    },
+    "deliverables": [
+      {
+        "key": "D1",
+        "label": "Logo concepts",
+        "quantity": 2,
+        "formats": [
+          "png"
+        ],
+        "refs": [
+          {
+            "source": "S1",
+            "start": 263,
+            "end": 330,
+            "quote": "You will send two logo concepts as PNG images by November 12, 2026."
+          }
+        ],
+        "status": "sourced"
+      },
+      {
+        "key": "D2",
+        "label": "Final logo files",
+        "quantity": null,
+        "formats": [
+          "png",
+          "svg"
+        ],
+        "refs": [
+          {
+            "source": "S1",
+            "start": 351,
+            "end": 406,
+            "quote": "you deliver the final logo files in PNG and SVG formats"
+          }
+        ],
+        "status": "sourced"
+      }
+    ],
+    "openQuestions": [
+      {
+        "key": "Q1",
+        "text": "Is a colour palette suggestion included in the package, and if so, at what price?",
+        "origin": "AI",
+        "refs": [
+          {
+            "source": "S1",
+            "start": 519,
+            "end": 604,
+            "quote": "Could you also suggest a colour palette? Not sure yet if that is part of the package."
+          }
+        ]
+      }
+    ]
+  },
+  "payment": {
+    "mode": "SANDBOX",
+    "flow": "hold_at_checkout_capture_on_acceptance",
+    "status": "COMPLETED",
+    "statusReason": null,
+    "amount": "300.00 USD",
+    "paypalOrderId": "6WJ57592AV292201X",
+    "authorizationId": "244006074A973950A",
+    "authorizationStatus": "CAPTURED",
+    "authorizedAt": "2026-11-10T11:58:18.068Z",
+    "holdExpiresAt": "2026-12-09T11:58:17.000Z",
+    "voidedAt": null,
+    "captureId": "37S43228146842457",
+    "captureTrigger": "BUYER_ACCEPTED",
+    "invoiceId": "PT-65452b11-mwamxzjx",
+    "customId": "pt:cmwamuh93000008l1g8xjmezb:v1",
+    "gross": "300.00",
+    "fee": "14.16",
+    "net": "285.84",
+    "completedAt": "2026-11-10T12:01:21.642Z",
+    "assertionType": "paypal_api_confirmed"
+  },
+  "requirements": [
+    {
+      "key": "price",
+      "label": "Price",
+      "agreed": "300.00 USD",
+      "agreedStatus": "sourced",
+      "sourcePassages": [
+        {
+          "source": "S1",
+          "start": 191,
+          "end": 238,
+          "quote": "The price is $300 USD for the full logo package"
+        }
+      ],
+      "observed": "Capture 37S43228146842457 COMPLETED, 300.00 USD (captured from the hold)",
+      "observedBy": "PayPal API",
+      "result": "MET",
+      "buyerResponse": null
+    },
+    {
+      "key": "D1:png",
+      "label": "Logo concepts: PNG",
+      "agreed": "2 × Logo concepts (PNG) — expects 2 × PNG files",
+      "agreedStatus": "sourced",
+      "sourcePassages": [
+        {
+          "source": "S1",
+          "start": 263,
+          "end": 330,
+          "quote": "You will send two logo concepts as PNG images by November 12, 2026."
+        }
+      ],
+      "observed": "2 × PNG received (concept-a.png, delivery 1; concept-b.png, delivery 1)",
+      "observedBy": "PromiseTrace checks",
+      "result": "MET",
+      "buyerResponse": null
+    },
+    {
+      "key": "D2:png",
+      "label": "Final logo files: PNG",
+      "agreed": "Final logo files (PNG, SVG) — expects 1 × PNG file",
+      "agreedStatus": "sourced",
+      "sourcePassages": [
+        {
+          "source": "S1",
+          "start": 351,
+          "end": 406,
+          "quote": "you deliver the final logo files in PNG and SVG formats"
+        }
+      ],
+      "observed": "1 × PNG received (northwind-final.png, delivery 1)",
+      "observedBy": "PromiseTrace checks",
+      "result": "MET",
+      "buyerResponse": null
+    },
+    {
+      "key": "D2:svg",
+      "label": "Final logo files: SVG",
+      "agreed": "Final logo files (PNG, SVG) — expects 1 × SVG file",
+      "agreedStatus": "sourced",
+      "sourcePassages": [
+        {
+          "source": "S1",
+          "start": 351,
+          "end": 406,
+          "quote": "you deliver the final logo files in PNG and SVG formats"
+        }
+      ],
+      "observed": "1 × SVG received (northwind-final.svg, delivery 2)",
+      "observedBy": "PromiseTrace checks",
+      "result": "MET",
+      "buyerResponse": null
+    },
+    {
+      "key": "deadline",
+      "label": "Deadline",
+      "agreed": "2026-11-20 17:00 America/New_York = 2026-11-20T22:00Z",
+      "agreedStatus": "sourced",
+      "sourcePassages": [
+        {
+          "source": "S1",
+          "start": 454,
+          "end": 517,
+          "quote": "Final files are due by November 20, 2026 at 5 PM New York time."
+        }
+      ],
+      "observed": "All checkable files present at 2026-11-10T11:59:59Z (server time)",
+      "observedBy": "PromiseTrace checks",
+      "result": "MET",
+      "buyerResponse": null
+    },
+    {
+      "key": "revisions",
+      "label": "Revision rounds",
+      "agreed": "2 included",
+      "agreedStatus": "sourced",
+      "sourcePassages": [
+        {
+          "source": "S1",
+          "start": 410,
+          "end": 451,
+          "quote": "The package includes two revision rounds."
+        }
+      ],
+      "observed": "0 revision requests recorded",
+      "observedBy": "Nothing yet",
+      "result": "PENDING",
+      "buyerResponse": null
+    }
+  ],
+  "deliveries": [
+    {
+      "number": 1,
+      "submittedAt": "2026-11-10T11:59:35.768Z",
+      "note": {
+        "text": "Final logo attached.",
+        "assertionType": "participant_declaration"
+      },
+      "files": [
+        {
+          "name": "concept-a.png",
+          "deliverable": "D1",
+          "sha256": "9c50b1e24f6bc081307aa33689f89aea5a6e08e6c6f3c6c78e12672e3649d118",
+          "bytes": 6767,
+          "detectedType": "png",
+          "receivedAt": "2026-11-10T11:59:35.773Z",
+          "notes": []
+        },
+        {
+          "name": "concept-b.png",
+          "deliverable": "D1",
+          "sha256": "c6f1a8fead2fa900be9215bc76c057ae8df6d4b5e693ab2ee75bcbca2313a325",
+          "bytes": 6474,
+          "detectedType": "png",
+          "receivedAt": "2026-11-10T11:59:35.783Z",
+          "notes": []
+        },
+        {
+          "name": "northwind-final.png",
+          "deliverable": "D2",
+          "sha256": "5c3b6bc44e74795f7f314a8408874c1c0cc68a088f183e881cfde697cfb8def1",
+          "bytes": 17786,
+          "detectedType": "png",
+          "receivedAt": "2026-11-10T11:59:35.831Z",
+          "notes": []
+        }
+      ],
+      "checksAtSubmission": [
+        {
+          "requirementKey": "D1:png",
+          "result": "PASS",
+          "expected": "2 × PNG files",
+          "observed": "2 × PNG received (concept-a.png, delivery 1; concept-b.png, delivery 1)"
+        },
+        {
+          "requirementKey": "D2:png",
+          "result": "PASS",
+          "expected": "1 × PNG file",
+          "observed": "1 × PNG received (northwind-final.png, delivery 1)"
+        },
+        {
+          "requirementKey": "D2:svg",
+          "result": "FAIL",
+          "expected": "1 × SVG file",
+          "observed": "No SVG file received for this item"
+        },
+        {
+          "requirementKey": "deadline",
+          "result": "NEEDS_REVIEW",
+          "expected": "By 2026-11-20T22:00:00Z (2026-11-20 17:00 America/New_York)",
+          "observed": "Some promised files are still missing; deadline not yet reached"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "submittedAt": "2026-11-10T11:59:59.456Z",
+      "note": null,
+      "files": [
+        {
+          "name": "northwind-final.svg",
+          "deliverable": "D2",
+          "sha256": "6135194963aea594d5c6ee87b1e7e028e702c92141f3b5c8513e714f020d9e07",
+          "bytes": 620,
+          "detectedType": "svg",
+          "receivedAt": "2026-11-10T11:59:59.462Z",
+          "notes": []
+        }
+      ],
+      "checksAtSubmission": [
+        {
+          "requirementKey": "D1:png",
+          "result": "PASS",
+          "expected": "2 × PNG files",
+          "observed": "2 × PNG received (concept-a.png, delivery 1; concept-b.png, delivery 1)"
+        },
+        {
+          "requirementKey": "D2:png",
+          "result": "PASS",
+          "expected": "1 × PNG file",
+          "observed": "1 × PNG received (northwind-final.png, delivery 1)"
+        },
+        {
+          "requirementKey": "D2:svg",
+          "result": "PASS",
+          "expected": "1 × SVG file",
+          "observed": "1 × SVG received (northwind-final.svg, delivery 2)"
+        },
+        {
+          "requirementKey": "deadline",
+          "result": "PASS",
+          "expected": "By 2026-11-20T22:00:00Z (2026-11-20 17:00 America/New_York)",
+          "observed": "All checkable files present at 2026-11-10T11:59:59Z (server time)"
+        }
+      ]
+    }
+  ],
+  "buyerActions": [
+    {
+      "id": "cmwan315o000007l9nsrng4zo",
+      "type": "ACCEPT",
+      "message": "",
+      "requirementKeys": [],
+      "createdAt": "2026-11-10T12:01:19.261Z",
+      "refersToId": null,
+      "deliveryId": "cmwan1bkw000f08jqt867uh6w",
+      "assertionType": "participant_declaration"
+    }
+  ],
+  "openObjections": [],
+  "aiRuns": [
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-5-5",
+      "status": "OK",
+      "inputTokens": 3076,
+      "outputTokens": 465,
+      "costUsd": 0.021604,
+      "latencyMs": 7188,
+      "assertionType": "ai_interpretation"
+    }
+  ],
+  "history": {
+    "hashChainIntact": true,
+    "firstBrokenSeq": null,
+    "events": [
+      {
+        "seq": 1,
+        "at": "2026-11-10T11:54:40.244Z",
+        "type": "DEAL_CREATED",
+        "assertionType": "system_observed",
+        "actor": "SELLER",
+        "summary": "Seller created \"Northwind Coffee logo package (held payment)\".",
+        "hash": "90eee4e0133a57a5c0af6f0376b4467234bd13cbec5551cb78a49fd0c0d42456"
+      },
+      {
+        "seq": 2,
+        "at": "2026-11-10T11:54:40.263Z",
+        "type": "SOURCE_ADDED",
+        "assertionType": "participant_declaration",
+        "actor": "SELLER",
+        "summary": "Seller added source S1 \"Email thread with Alex, 6 Nov\" (618 characters).",
+        "hash": "d687995a0da915ffb6a8d22e857d315f23e3996d3dab4ce656dd24925cd518f3"
+      },
+      {
+        "seq": 3,
+        "at": "2026-11-10T11:54:47.584Z",
+        "type": "BRIEF_PROPOSED",
+        "assertionType": "ai_interpretation",
+        "actor": "AI",
+        "summary": "AI proposed version 1: 11 of 11 claims kept with verified passages; 0 dropped; 0 quotes not found in the source.",
+        "hash": "92325e1fd957f7b37619bfe9bae559c5348a46a0345cea9b2a87622f84963b4e"
+      },
+      {
+        "seq": 4,
+        "at": "2026-11-10T11:55:32.237Z",
+        "type": "BUYER_JOINED",
+        "assertionType": "system_observed",
+        "actor": "BUYER",
+        "summary": "Buyer joined through the private invite link.",
+        "hash": "7857a96a9930a2c7555d8c811c2496358816e59646095db9e2f99e331668c17e"
+      },
+      {
+        "seq": 5,
+        "at": "2026-11-10T11:55:42.052Z",
+        "type": "BRIEF_APPROVED",
+        "assertionType": "participant_declaration",
+        "actor": "BUYER",
+        "summary": "Buyer approved version 1.",
+        "hash": "cc084f19b656324c0a8a726b1f9a3d253da4635770df0c581b101cf31e1fe12d"
+      },
+      {
+        "seq": 6,
+        "at": "2026-11-10T11:56:33.040Z",
+        "type": "BRIEF_APPROVED",
+        "assertionType": "participant_declaration",
+        "actor": "SELLER",
+        "summary": "Seller approved version 1.",
+        "hash": "3adbe0baf95bf19c1a2a2a049c28df63f4a234530f82b2e97428b83dcbc11fa9"
+      },
+      {
+        "seq": 7,
+        "at": "2026-11-10T11:56:33.068Z",
+        "type": "AGREEMENT_READY",
+        "assertionType": "system_observed",
+        "actor": "SYSTEM",
+        "summary": "Both participants approved version 1 (300.00 USD). Ready for PayPal checkout.",
+        "hash": "8b1eed51d484536ccc68e4b59d5983ed5daeec0319a724a94aa4891ec37d5261"
+      },
+      {
+        "seq": 8,
+        "at": "2026-11-10T11:57:24.979Z",
+        "type": "PAYPAL_ORDER_CREATED",
+        "assertionType": "paypal_api_confirmed",
+        "actor": "BUYER",
+        "summary": "PayPal order 6WJ57592AV292201X created for 300.00 USD against version 1 (intent AUTHORIZE: hold now, capture when the buyer accepts).",
+        "hash": "d7a0f2ffb9731d74979ecc3aea0132261f4a232480d9443934c44c8e44ae5a45"
+      },
+      {
+        "seq": 9,
+        "at": "2026-11-10T11:58:18.085Z",
+        "type": "PAYMENT_AUTHORIZED",
+        "assertionType": "paypal_api_confirmed",
+        "actor": "PAYPAL",
+        "summary": "PayPal authorization 244006074A973950A CREATED: 300.00 USD is held on the buyer's payment method until 2026-12-09T11:58:17Z. Nothing is captured yet; the seller is paid when the buyer accepts the delivery. Version 1 locked as the funded agreement.",
+        "hash": "0962aead4f928fc62c7726c4b3adbcd35b4733c6c7b68901b3b51a60fb65855f"
+      },
+      {
+        "seq": 10,
+        "at": "2026-11-10T11:58:23.497Z",
+        "type": "PAYPAL_BUYER_APPROVED",
+        "assertionType": "paypal_api_confirmed",
+        "actor": "PAYPAL",
+        "summary": "Signed PayPal webhook confirms the buyer approved order 6WJ57592AV292201X (the hold had already been confirmed).",
+        "hash": "4957f1c9839ff2711d7afe9eec01bb56747930ece7256da178f7b1a06991d3a6"
+      },
+      {
+        "seq": 11,
+        "at": "2026-11-10T11:59:35.856Z",
+        "type": "DELIVERY_SUBMITTED",
+        "assertionType": "system_observed",
+        "actor": "SELLER",
+        "summary": "Seller submitted delivery 1 with 3 file(s): concept-a.png (PNG, D1), concept-b.png (PNG, D1), northwind-final.png (PNG, D2).",
+        "hash": "1842e51c46d15328ee3645bb8df40c68b8691932904497d6b1f46ab16e78ffcc"
+      },
+      {
+        "seq": 12,
+        "at": "2026-11-10T11:59:35.864Z",
+        "type": "SELLER_NOTE",
+        "assertionType": "participant_declaration",
+        "actor": "SELLER",
+        "summary": "Seller's note with delivery 1: \"Final logo attached.\"",
+        "hash": "96ddd6ce4f04a4dcca549357f30c50571d44d3ddc7502273aabefb00c0480949"
+      },
+      {
+        "seq": 13,
+        "at": "2026-11-10T11:59:35.986Z",
+        "type": "CHECKS_RECORDED",
+        "assertionType": "system_observed",
+        "actor": "SYSTEM",
+        "summary": "Automatic checks after delivery 1 (against version 1): 2 met, 1 not met (Final logo files: SVG), 1 need review, 0 not checkable by code.",
+        "hash": "f7bfe2d7f7d9d35c8f9ffba8df961e8f5f439b8695819885ccee77c83f3e7532"
+      },
+      {
+        "seq": 14,
+        "at": "2026-11-10T11:59:59.495Z",
+        "type": "DELIVERY_SUBMITTED",
+        "assertionType": "system_observed",
+        "actor": "SELLER",
+        "summary": "Seller submitted delivery 2 with 1 file(s): northwind-final.svg (SVG, D2).",
+        "hash": "85bcafd9601e2aad2920bfcf64969fd64ad4fb332b06fa312576f4e60685290a"
+      },
+      {
+        "seq": 15,
+        "at": "2026-11-10T11:59:59.588Z",
+        "type": "CHECKS_RECORDED",
+        "assertionType": "system_observed",
+        "actor": "SYSTEM",
+        "summary": "Automatic checks after delivery 2 (against version 1): 4 met, 0 not met, 0 need review, 0 not checkable by code.",
+        "hash": "fb57087a78c09896b41944a2f70c5b25b20294a64705fa8224f8dcafef09e713"
+      },
+      {
+        "seq": 16,
+        "at": "2026-11-10T12:01:19.273Z",
+        "type": "BUYER_ACCEPT",
+        "assertionType": "participant_declaration",
+        "actor": "BUYER",
+        "summary": "Buyer accepted the delivery for delivery 2.",
+        "hash": "23124b5ad95c566af14fb5d000837936d9e761fbf01070f2020b36931a7870d2"
+      },
+      {
+        "seq": 17,
+        "at": "2026-11-10T12:01:21.663Z",
+        "type": "PAYMENT_COMPLETED",
+        "assertionType": "paypal_api_confirmed",
+        "actor": "PAYPAL",
+        "summary": "PayPal capture 37S43228146842457 COMPLETED for 300.00 USD: the held payment was captured after the buyer accepted the delivery. The seller is now paid.",
+        "hash": "311c4eaa7313972ecf4cbcde2fb472d0339d39806a1d665181b9a889b1484b7d"
+      }
+    ]
+  }
+}

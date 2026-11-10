@@ -91,4 +91,7 @@ Pure function of (effective brief, all files so far). For each deliverable: per 
 - CSP restricts scripts/frames to self + PayPal; `frame-ancestors 'none'`; `Referrer-Policy: no-referrer` (invite tokens are in URLs).
 - Uploads: size and count limits, magic-byte allowlist (PNG, JPEG, SVG, PDF, ZIP), SVG scanned for scripts/handlers/external refs, PDF for JavaScript/launch actions; never rendered by the app.
 - Exports omit emails and PayPal payer IDs; logs never print secrets.
-- Retention: the seller can delete an agreement (cascade delete of sources, versions, files, history). PayPal's records are unaffected.
+- Retention: the seller can delete an agreement (cascade delete of sources, versions, files, history) only while PayPal has neither held nor moved money for it; after a hold or capture the record is kept for both sides, and `npm run retention` skips those agreements too (`src/lib/services/deals.ts`). PayPal's records are unaffected.
+- Auth API: `/api/auth/*` serves only sign-in, sign-up, sign-out and session; Better Auth's account-changing endpoints (change password, update user, delete user, session revocation, password reset) return 404, so shared demo accounts cannot be taken over.
+- Budgets: AI extraction has a daily cap overall and per account; one delivery is capped at 4 MiB to fit the host's 4.5 MB body limit.
+- Holds: a hold past PayPal's expiry time counts as over (no delivery, capture or release); checkout warns when deadline + review window outlasts the 29-day hold; files flagged for review block the seller's own capture; an objection must name a requirement.

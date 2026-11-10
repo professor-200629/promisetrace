@@ -86,6 +86,10 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   await tab(buyer, dealUrl, "delivery");
   await buyer.getByLabel(/Report a problem/).check();
   await buyer.getByLabel("Message (required)").fill("The SVG file we agreed on is missing.");
+  // An objection must name the requirement it is about.
+  await buyer.getByRole("button", { name: "Record my response" }).click();
+  await expect(buyer.getByText(/Choose which agreed requirement this is about/)).toBeVisible();
+  await buyer.getByRole("checkbox", { name: /^D2/ }).check();
   await buyer.getByRole("button", { name: "Record my response" }).click();
   await expect(buyer.getByText("Recorded.")).toBeVisible();
 
@@ -98,7 +102,7 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   // --- Buyer accepts: the held payment is captured; the objection stays visible until withdrawn
   await tab(buyer, dealUrl, "delivery");
   await buyer.getByLabel(/^Accept/).check();
-  await buyer.getByRole("button", { name: "Accept and release 300.00 USD to the seller" }).click();
+  await buyer.getByRole("button", { name: "Accept and capture the held 300.00 USD" }).click();
   await expect(buyer.getByText(/Acceptance recorded\. PayPal captured the held payment/)).toBeVisible();
   await tab(buyer, dealUrl, "overview");
   await expect(buyer.getByText("Open buyer objections")).toBeVisible();

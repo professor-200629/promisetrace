@@ -258,7 +258,7 @@ export async function applyCaptureState(
         : "(PromiseTrace did not request this capture; it was made outside the app)";
       const summaries: Record<string, string> = {
         COMPLETED: payment.intent === "AUTHORIZE"
-          ? `${label}PayPal capture ${capture.id} COMPLETED for ${money}: the held payment was captured ${why}. The seller is now paid.`
+          ? `${label}PayPal capture ${capture.id} COMPLETED for ${money}: the held payment was captured ${why}, into the PayPal merchant account this single-merchant demo is configured with.`
           : `${label}PayPal capture ${capture.id} COMPLETED for ${money}. Version locked as the paid agreement.`,
         CAPTURE_PENDING: `${label}PayPal capture ${capture.id} is PENDING${reason ? ` (${reason})` : ""}. Not treated as paid.`,
         DECLINED: `${label}PayPal capture ${capture.id} was DECLINED${reason ? ` (${reason})` : ""}. Not paid.`,
@@ -384,7 +384,7 @@ export async function applyAuthorizationState(
   const version = await db.briefVersion.findUniqueOrThrow({ where: { id: payment.versionId } });
   const until = expiresAt ? expiresAt.toISOString().replace(/\.\d{3}Z$/, "Z") : "PayPal's expiry time";
   const summaries: Record<string, string> = {
-    AUTHORIZED: `${label}PayPal authorization ${auth.id} CREATED: ${money} is held on the buyer's payment method until ${until}. Nothing is captured yet; the seller is paid when the buyer accepts the delivery. Version ${version.number} locked as the funded agreement.`,
+    AUTHORIZED: `${label}PayPal authorization ${auth.id} CREATED: ${money} is held on the buyer's payment method until ${until}. Nothing is captured yet; it is captured when the buyer accepts the delivery. Version ${version.number} locked as the funded agreement.`,
     AUTHORIZATION_PENDING: `${label}PayPal authorization ${auth.id} is PENDING${reason ? ` (${reason})` : ""}. Not treated as funded.`,
     AUTHORIZATION_DENIED: `${label}PayPal DENIED authorization ${auth.id}${reason ? ` (${reason})` : ""}. Not funded.`,
     VOIDED: `${label}PayPal authorization ${auth.id} VOIDED: the hold on ${money} is released to the buyer. Nothing was captured.`,
@@ -486,9 +486,11 @@ export async function paymentSummary(db: Db | Tx, dealId: string) {
   const relevant = payments.filter((p) => !["INITIATED", "ABANDONED"].includes(p.status));
   const latest = relevant.at(-1) ?? null;
   const isPaid = !!latest && PAID_STATUSES.has(latest.status);
-  const isHeld = !!latest && HELD_STATUSES.has(latest.status);
+  // A hold past PayPal's expiry time is over even if no webhook has told us yet.
+  const holdExpired = !!latest && HELD_STATUSES.has(latest.status) && !!latest.authorizationExpiresAt && latest.authorizationExpiresAt.getTime() <= Date.now();
+  const isHeld = !!latest && HELD_STATUSES.has(latest.status) && !holdExpired;
   // Funded = the seller may deliver: money captured, or held by PayPal for this agreement
   // (a hold whose capture is pending at PayPal still counts, since the work was already funded).
   const isFunded = isPaid || isHeld || (!!latest && latest.intent === "AUTHORIZE" && latest.status === "CAPTURE_PENDING");
-  return { payments, latest, isPaid, isHeld, isFunded };
+  return { payments, latest, isPaid, isHeld, holdExpired, isFunded };
 }

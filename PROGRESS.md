@@ -26,6 +26,10 @@ Deadline: Devpost submission closes **Thu 12 Nov 2026 12:00 PT = Fri 13 Nov 01:3
 - Built: checkout with intent AUTHORIZE by default (`CHECKOUT_INTENT`), hold funds and locks the agreement and opens delivery; buyer Accept captures; seller capture after a 5-day review window (`REVIEW_WINDOW_DAYS`) only with every check met and no open objection; seller cancel and missed-deadline buyer release void the hold; `PAYMENT.AUTHORIZATION.CREATED/VOIDED` webhooks; payment record, history, HTML/JSON export and wording updated. Additive migration `20261110000000_payment_holds`.
 - Verified: typecheck, lint, build; 57 tests (24 new); Playwright journey; 5/5 scenarios; hosted live run hold → accept → capture COMPLETED with signed webhooks and `paypal:verify` MATCH (VERIFICATION 5d). Not run live in the app: the void path (API verified live in 5c).
 
+## Done (10 Nov 2026, late evening) — hardening after the weakness audit
+
+Report: `reports/PromiseTrace weaknesses and real world use.md` (author's OneDrive). Fixed: auth API allowlist (account-changing endpoints 404), no delete while PayPal holds or captured money (app and retention script), per-account AI cap, "seller is now paid" and similar overclaims removed, 4 MiB per-delivery cap with clear messages, expired holds treated as over, hold-length warning before checkout, flagged files block seller self-capture, objections must name a requirement (checked in the browser so nothing typed is lost), demo conversation dates relative to today, hold status refresh script, sample export of the 10 Nov hold run, stale docs refreshed. Verified: 67 tests, e2e twice, 5/5 scenarios, hosted lockdown checks, live cancel run (VOIDED + signed webhooks, VERIFICATION 5e).
+
 ## Blocked on the author
 
 1. Optional: a US sandbox Personal account (developer dashboard) to also show the PayPal-wallet path in the video.

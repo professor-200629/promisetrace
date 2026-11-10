@@ -141,7 +141,7 @@ export async function buildView(db: Db, dealId: string, role: Role) {
     deliveries: deliveries.map((d) => ({ number: d.number, submittedAt: d.submittedAt })),
     buyerActions: buyerActions.map((a) => ({ type: a.type, createdAt: a.createdAt })),
     openObjectionCount: objections.length,
-    notMetCount: rows.filter((r) => r.result === "NOT_MET").length,
+    flaggedCount: rows.filter((r) => r.key !== "price" && (r.result === "NOT_MET" || r.result === "NEEDS_REVIEW")).length,
     deadlineUtc: effective ? deadlineInstant(effective.content.deadline)?.utc ?? null : null,
     reviewWindowDays: env().REVIEW_WINDOW_DAYS,
     now: new Date(),

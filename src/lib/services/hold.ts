@@ -13,7 +13,7 @@ import { formatMoney } from "@/lib/money";
  * convenience.
  */
 
-/** Buyer accepted the latest delivery: capture the held payment for the seller. */
+/** Buyer accepted the latest delivery: capture the held payment. */
 export async function captureOnAcceptance(db: Db, gateway: PayPalGateway, dealId: string, userId: string): Promise<CaptureOutcome | null> {
   const { role } = await loadDealForUser(db, dealId, userId);
   requireRole(role, "BUYER", "accept deliveries");
@@ -21,6 +21,7 @@ export async function captureOnAcceptance(db: Db, gateway: PayPalGateway, dealId
   const p = view.payment.latest;
   if (!p || p.intent !== "AUTHORIZE") return null; // nothing is held: paid at checkout, or never paid
   if (p.status === "COMPLETED") return { kind: "COMPLETED", paymentId: p.id };
+  if (view.hold.expired) throw new AppError("HOLD_ENDED", view.hold.sellerCapture.reason);
   if (!view.hold.held) return null;
   if (!view.hold.buyerAccepted) throw new AppError("INVALID", "Accept the latest delivery first.");
   return captureHold(db, gateway, p.id, { trigger: "BUYER_ACCEPTED", actorId: userId });

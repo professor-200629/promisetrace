@@ -1,6 +1,6 @@
 # End-to-end scenarios (scripted, FIXTURE PayPal gateway, fictional data)
 
-Run: 2026-11-10T11:49:59.282Z — `npx tsx eval/scenarios.ts`. These exercise the real services and database; they are not customer results.
+Run: 2026-11-10T14:00:55.747Z — `npx tsx eval/scenarios.ts`. These exercise the real services and database; they are not customer results.
 
 | Scenario | Expected | Observed | Result |
 |---|---|---|---|
