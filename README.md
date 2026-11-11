@@ -9,7 +9,7 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 | | |
 |---|---|
 | **Hosted demo** | **https://promisetrace-sandbox.vercel.app**: PayPal **sandbox** and Claude live, fictional data, no real money |
-| **Demo video** | https://youtu.be/wKefoWY4dLE |
+| **Demo video** | https://youtu.be/-Rp3hlbv-DA (2:29) |
 | **Seller login** | `seller@demo.promisetrace.test` · password `promisetrace-demo-2026` (fictional, test-only) |
 | **Buyer login** | `buyer@demo.promisetrace.test` · same password |
 | **Test card** | In the PayPal window choose **Debit or Credit Card**: Mastercard `5555 5555 5555 4444`, any future expiry, any CVV, any US billing details. If the sandbox declines it, try Visa `4012 8888 8888 1881` or a PayPal sandbox Personal account. |
@@ -148,7 +148,7 @@ Without credentials the app shows a clear **setup state**. For offline developme
 
 - **Claude Code** (Anthropic; model Claude Opus 5.5) wrote most of the code, tests and documentation under the author's direction.
 - **Claude API** is the runtime AI inside the app (see above).
-- **ElevenLabs** (AI voice) for the demo video's voice-over. The screen footage is a real recording of the app (Playwright), not generated.
+- **ElevenLabs** (AI voice) for the demo video's voice-over. The screen footage is a real recording of the hosted sandbox app (Playwright), not generated.
 
 ## Third-party software
 

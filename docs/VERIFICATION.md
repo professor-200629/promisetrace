@@ -189,7 +189,7 @@ Changes: an agreed deliverable code cannot check (a format it cannot identify, s
 
 Commit `852c3d4` deployed to Vercel production (`dpl_7Tq5cCc7EAbUjNAjZChqPSVuDcUq`, aliases promisetrace-sandbox.vercel.app and promisetrace.vercel.app) with `vercel deploy --prod` from a clean checkout of that commit. No schema change; the hosted Turso database was not reset. `/api/health` → `{"status":"ok","db":"ok","paypal":"ready","ai":"ready"}`.
 
-Signed-out checks (fresh browser context, no cookies): the public repository shows `852c3d4`, the MIT license and the judge section; the hosted landing, About and sign-in pages return 200 and show the shared payment terms; the YouTube video https://youtu.be/wKefoWY4dLE is public, playable, 2:17 long, and played (current time advanced from 3.3 s to 9.4 s).
+Signed-out checks (fresh browser context, no cookies): the public repository shows `852c3d4`, the MIT license and the judge section; the hosted landing, About and sign-in pages return 200 and show the shared payment terms; the first YouTube video https://youtu.be/wKefoWY4dLE was public, playable and 2:17 long. It was then replaced as the submission video by https://youtu.be/-Rp3hlbv-DA (2:29), cut from the footage of the hosted journey below; signed out, it is public, playable and 149 s long, and it played (current time advanced from 3.0 s to 9.0 s).
 
 Hosted journey (`scripts/demo-video/record.mjs` against the hosted demo; fictional demo accounts; PayPal's published test Mastercard; deal `cmwcc9s86000008jvautvwjzb`):
 

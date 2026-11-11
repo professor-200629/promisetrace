@@ -1,5 +1,7 @@
 # Demo video script — 2:29 (must stay under 3:00)
 
+Published: https://youtu.be/-Rp3hlbv-DA (public, 11 Nov 2026). Footage: the hosted journey of 11 Nov (docs/VERIFICATION.md 5g).
+
 The video is a real recording of the app, not generated footage. `scripts/demo-video/record.mjs` drives two browser contexts (**Seller Priya** and **Buyer Alex**, the fictional seeded demo accounts) through one live journey: real Claude extraction, PayPal **sandbox** authorization and capture with PayPal's published test Mastercard, and the files in `demo-files/`. `scripts/demo-video/cards.mjs` renders the title and closing cards. The voice-over is ElevenLabs (AI voice); captions are burned in. No music, and no PayPal logos beyond what PayPal's own sandbox window shows.
 
 The video centres on four moments: **the missing SVG**, **the corrected delivery**, **the buyer's acceptance**, and **the exported evidence record**.

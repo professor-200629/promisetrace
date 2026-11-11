@@ -2,7 +2,7 @@
 
 > Text for the Devpost submission, 11 Nov 2026. Paste each section into the matching Devpost field.
 >
-> Repository: https://github.com/professor-200629/promisetrace · Live demo: https://promisetrace-sandbox.vercel.app · Video: https://youtu.be/wKefoWY4dLE
+> Repository: https://github.com/professor-200629/promisetrace · Live demo: https://promisetrace-sandbox.vercel.app · Video: https://youtu.be/-Rp3hlbv-DA
 
 ## For judges: try it in five minutes
 
