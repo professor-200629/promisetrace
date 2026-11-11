@@ -6,7 +6,7 @@ const now = new Date("2026-11-20T12:00:00Z");
 const held = { status: "AUTHORIZED", intent: "AUTHORIZE", authorizedAt: new Date(now.getTime() - 2 * DAY), authorizationExpiresAt: new Date(now.getTime() + 27 * DAY) };
 
 function inputs(over: Partial<HoldInputs> = {}): HoldInputs {
-  return { payment: held, deliveries: [], buyerActions: [], openObjectionCount: 0, flaggedCount: 0, deadlineUtc: new Date(now.getTime() + 3 * DAY), reviewWindowDays: 5, now, ...over };
+  return { payment: held, deliveries: [], buyerActions: [], openObjectionCount: 0, flaggedCount: 0, buyerConfirmCount: 0, deadlineUtc: new Date(now.getTime() + 3 * DAY), reviewWindowDays: 5, now, ...over };
 }
 
 describe("hold rules", () => {
@@ -35,6 +35,10 @@ describe("hold rules", () => {
     const old = [{ number: 1, submittedAt: new Date(now.getTime() - 6 * DAY) }];
     expect(holdState(inputs({ deliveries: old })).sellerCapture.allowed).toBe(true);
     expect(holdState(inputs({ deliveries: old, flaggedCount: 1 })).sellerCapture.allowed).toBe(false);
+    // An agreed item code cannot check needs the buyer: silence never captures it.
+    expect(holdState(inputs({ deliveries: old, buyerConfirmCount: 1 })).sellerCapture).toMatchObject({ allowed: false });
+    expect(holdState(inputs({ deliveries: old, buyerConfirmCount: 1 })).sellerCapture.reason).toMatch(/only be confirmed by the buyer/);
+    expect(holdState(inputs({ deliveries: old, buyerConfirmCount: 1, buyerActions: [{ type: "ACCEPT", createdAt: new Date(now.getTime() - DAY) }] })).sellerCapture.allowed).toBe(true);
     expect(holdState(inputs({ deliveries: old, openObjectionCount: 2 })).sellerCapture.reason).toMatch(/2 open objections/);
   });
 

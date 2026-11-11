@@ -11,9 +11,13 @@
  *    nothing delivered                            -> the buyer may release the hold.
  *  - Otherwise the hold stays until one of these happens or PayPal's
  *    authorization expires (29 days), when the money returns to the buyer.
+ *  - Seller capture always comes after the review window, which is longer than
+ *    PayPal's 3-day honor period, so it can fail; failures are recorded.
  */
 
+/** PayPal's honor period: the first 3 days of an authorization, when capture success rates are highest (not a guarantee). */
 export const PAYPAL_HONOR_DAYS = 3;
+export const HONOR_SENTENCE = "PayPal capture is most likely to succeed within the first three days of authorization.";
 const DAY = 86_400_000;
 
 export type HoldInputs = {
@@ -21,8 +25,15 @@ export type HoldInputs = {
   deliveries: Array<{ number: number; submittedAt: Date }>;
   buyerActions: Array<{ type: string; createdAt: Date }>;
   openObjectionCount: number;
-  /** Requirements the delivered files do not meet, or that code flagged for review. */
+  /** Agreed deliverables (or the agreed deadline) the delivered files do not meet, or that code flagged for review. */
   flaggedCount: number;
+  /**
+   * Agreed deliverables code cannot check (e.g. formats it cannot identify, or items with no file
+   * format or count). Only the buyer can confirm these, so the seller can never capture on silence
+   * while any exist. Optional fields the parties never agreed on (no deadline, no revision count)
+   * are not counted.
+   */
+  buyerConfirmCount: number;
   deadlineUtc: Date | null;
   reviewWindowDays: number;
   now: Date;
@@ -66,6 +77,7 @@ export function holdState(i: HoldInputs): HoldState {
   else if (buyerAccepted) sellerCapture = yes(`The buyer accepted delivery ${latest.number}.`);
   else if (i.openObjectionCount > 0) sellerCapture = no(`The buyer has ${i.openObjectionCount} open objection${i.openObjectionCount === 1 ? "" : "s"}. Resolve ${i.openObjectionCount === 1 ? "it" : "them"} with the buyer first.`);
   else if (i.flaggedCount > 0) sellerCapture = no(`${i.flaggedCount} requirement${i.flaggedCount === 1 ? " is" : "s are"} not met or flagged for review. Only the buyer's acceptance can capture now.`);
+  else if (i.buyerConfirmCount > 0) sellerCapture = no(`${i.buyerConfirmCount} agreed item${i.buyerConfirmCount === 1 ? "" : "s"} can only be confirmed by the buyer (code cannot check ${i.buyerConfirmCount === 1 ? "it" : "them"}). Only the buyer's acceptance of delivery ${latest.number} can capture.`);
   else if (i.now.getTime() < reviewEndsAt!.getTime()) sellerCapture = no(`The buyer has until ${iso(reviewEndsAt!)} to review delivery ${latest.number}. After that, with every check met and no objection, you can capture.`);
   else sellerCapture = yes(`The ${i.reviewWindowDays}-day review window for delivery ${latest.number} passed with every check met and no open objection.`);
 
@@ -85,7 +97,7 @@ export function holdState(i: HoldInputs): HoldState {
 /** PayPal keeps a hold for 29 days. Warn before checkout when the deadline plus the review window would outlast it. */
 export const PAYPAL_HOLD_DAYS = 29;
 export function holdLengthWarning(deadlineUtc: Date | null, now: Date, reviewWindowDays: number): string | null {
-  if (!deadlineUtc) return `No deadline is agreed. PayPal keeps a hold for at most ${PAYPAL_HOLD_DAYS} days, and capture is only guaranteed in the first ${PAYPAL_HONOR_DAYS}.`;
+  if (!deadlineUtc) return `No deadline is agreed. PayPal keeps a hold for at most ${PAYPAL_HOLD_DAYS} days. ${HONOR_SENTENCE}`;
   const reviewEnd = new Date(deadlineUtc.getTime() + reviewWindowDays * DAY);
   const holdEnd = new Date(now.getTime() + PAYPAL_HOLD_DAYS * DAY);
   if (reviewEnd.getTime() <= holdEnd.getTime()) return null;

@@ -4,11 +4,50 @@
 
 PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). It serves one specific workflow: an independent digital-service seller (for example a logo designer in India) and an overseas client who agreed a job in chat or email and pay through PayPal.
 
+## For judges: try it in five minutes
+
+| | |
+|---|---|
+| **Hosted demo** | **https://promisetrace-sandbox.vercel.app**: PayPal **sandbox** and Claude live, fictional data, no real money |
+| **Demo video** | https://youtu.be/wKefoWY4dLE |
+| **Seller login** | `seller@demo.promisetrace.test` · password `promisetrace-demo-2026` (fictional, test-only) |
+| **Buyer login** | `buyer@demo.promisetrace.test` · same password |
+| **Test card** | In the PayPal window choose **Debit or Credit Card**: Mastercard `5555 5555 5555 4444`, any future expiry, any CVV, any US billing details. If the sandbox declines it, try Visa `4012 8888 8888 1881` or a PayPal sandbox Personal account. |
+| **Files to upload** | [`demo-files/`](demo-files/): `concept-a.png`, `concept-b.png`, `northwind-final.png`, `northwind-final.svg` (fictional) |
+
+Use two windows (one private) so both people stay signed in. The demo accounts are shared by every tester, so you may see other agreements; for a clean space, create two accounts of your own on the sign-up page.
+
+**Seller (window 1)**
+1. Sign in as the seller → **New agreement** → **Use the fictional logo example** → **Create and propose brief**. Claude proposes the brief; each value links to the sentence it came from.
+2. **Brief & approval** → copy the invite link → **Approve version 1**.
+3. After the buyer pays: **Delivery** → upload `concept-a.png` and `concept-b.png` for the concepts and only `northwind-final.png` for the final files → **Submit delivery**. PromiseTrace shows *Final logo files: SVG — Not met*, linked to the sentence in the brief.
+4. After the buyer reports it: upload `northwind-final.svg` as a second delivery. Every checkable item is now met.
+
+**Buyer (window 2, private)**
+1. Open the invite link → sign in as the buyer → **Join this agreement as the buyer** → **Approve version 1**.
+2. **Payment** → read the payment terms shown above the PayPal buttons → pay with the test card. PayPal **holds** the money; nothing is captured.
+3. **Delivery** → **Report a problem** about D2 (the missing SVG) → **Record my response**.
+4. After the corrected delivery: **Accept** → **Accept and capture the held 300.00 USD**. PayPal captures the hold. Then withdraw the objection.
+5. The agreement now reads **Complete** → **View evidence record** opens the exported record (HTML; JSON on **History & export**).
+
+### Payment terms (the same text the app shows)
+
+PayPal holds the payment at checkout. It is captured when the buyer accepts the delivery, or by the seller after a 5-day review period if code finds every agreed item met, nothing is flagged, no objection is open and nothing needs the buyer's confirmation.
+
+- Accepting the latest delivery captures the held payment for the seller. An acceptance counts only for the delivery it follows.
+- The seller can capture without the buyer's acceptance only after the 5-day review period that starts with the latest delivery, and only if code finds every agreed file format, count and the deadline met, no file is flagged, the buyer has no open objection, and no agreed item needs the buyer's confirmation (items code cannot check, such as an `.ai` file or an item with no format or count). Optional fields the parties never agreed on (no deadline, no revision count) do not block.
+- The seller can cancel and release the hold at any time; the buyer can release it if the agreed deadline passes with nothing delivered. If nobody captures or releases it, PayPal's hold ends after 29 days and nothing is charged.
+- PayPal capture is most likely to succeed within the first three days of authorization ([PayPal: authorization and honor period](https://developer.paypal.com/payment-methods/auth-honor/)). The 5-day review period puts any seller capture after that window, so it can fail; PromiseTrace records a failed capture instead of hiding it. Reauthorization is not built.
+
+The server enforces these rules (`src/lib/hold-rules.ts`); the wording lives in one place (`src/lib/payment-terms.ts`).
+
+## What it does
+
 1. The seller pastes the conversation. **Claude (Anthropic API)** proposes a structured brief — deliverables, counts, file formats, price, deadline and timezone, revision rounds, and open questions. Every value must quote the source; our code checks that the quote exists and mentions that value, or the value stays *unknown*.
 2. The buyer joins through a private invite link. **Both participants approve the same version.** Any edit before payment creates a new version and resets approvals.
-3. The buyer pays with **PayPal Checkout (sandbox)**, and PayPal **holds** the money (an authorization) instead of taking it. Orders are created on the server from the approved version's price. The hold is **captured when the buyer accepts the delivery** (or by the seller after a review window if every check is met and no objection is open), and **released** if the seller cancels or the deadline passes with nothing delivered. Only a capture PayPal returns as `COMPLETED`, with the exact amount and reconciliation IDs, marks the agreement paid.
+3. The buyer pays with **PayPal Checkout (sandbox)**, and PayPal **holds** the money (an authorization) instead of taking it. Orders are created on the server from the approved version's price. The hold is **captured when the buyer accepts the delivery**, or by the seller after the review period under the [payment terms](#payment-terms-the-same-text-the-app-shows) above, and **released** if the seller cancels or the deadline passes with nothing delivered. Only a capture PayPal returns as `COMPLETED`, with the exact amount and reconciliation IDs, marks the agreement paid.
 4. The seller uploads files. **Deterministic code** checks promised formats (from file bytes, not names), counts and the deadline in the agreed timezone. In the demo, the seller forgets the SVG; PromiseTrace flags it and links the finding to the sentence in the approved brief.
-5. The buyer acknowledges, accepts, requests a revision or reports a problem — separate, explicit statements. Accepting captures the held payment. Objections stay visible until withdrawn.
+5. The buyer acknowledges, accepts, requests a revision or reports a problem — separate, explicit statements. Accepting the latest delivery captures the held payment. Objections stay visible until withdrawn. Once PayPal confirms the capture, the buyer has accepted and no objection is open, the agreement reads **Complete**.
 6. A **requirement-to-evidence table**, a **hash-chained history**, and an **HTML/JSON evidence export** keep *agreed*, *observed* and *needs review* apart, and label every entry as recorded by PromiseTrace, confirmed by PayPal's API, stated by a participant, or interpreted by AI.
 
 > PromiseTrace records facts and supports resolution between two parties. It never holds funds itself: a payment hold is a PayPal authorization on the buyer's payment method. It does **not** lift PayPal account holds, decide PayPal claims, or guarantee PayPal Seller Protection. All demo data is fictional.
@@ -25,13 +64,10 @@ PromiseTrace is a hackathon MVP for the [PayPal AI Hackathon](https://paypalaiha
 | **Live PayPal sandbox payment** | Passed 8 Nov (guest card checkout, capture COMPLETED, re-verified via API) | [docs/VERIFICATION.md](docs/VERIFICATION.md), [sample record](docs/sample-evidence/) |
 | **Real Claude extraction** | Live run passed 8 Nov | `npm run ai:check`, [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Delivery checks, buyer actions, evidence export | Built | tests + Playwright journey |
+| Buyer-confirm rule, **Complete** state, one set of payment terms | Built 11 Nov; 77 tests + browser journey (fixture); live local sandbox run passed (Claude + hold → capture COMPLETED) | [VERIFICATION 5f](docs/VERIFICATION.md) |
 | Browser journey (fixture mode) | Passing | `tests/e2e/journey.spec.ts` |
 | Synthetic extraction benchmark | Baseline + 2 Claude runs (precision 1.00, recall 0.95–0.97) | [docs/EVALUATION.md](docs/EVALUATION.md) |
 | Customer interviews | **Not done** — script only | [docs/INTERVIEW_SCRIPT.md](docs/INTERVIEW_SCRIPT.md) |
-
-## Try the hosted demo
-
-**https://promisetrace-sandbox.vercel.app** — PayPal **sandbox** and Claude live; fictional data only. Demo logins are listed below. To pay, use a PayPal sandbox buyer account or the sandbox "Debit or Credit Card" option with a PayPal-published test card (for example Visa 4012 8888 8888 1881, any future expiry, any CVV). PayPal holds the payment; it is captured when the buyer accepts the delivery. No real money moves.
 
 ## Run it locally (Windows, macOS or Linux)
 
@@ -54,7 +90,7 @@ Fill `.env`:
 | `BETTER_AUTH_SECRET` | sessions | any 32+ random characters |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | real sandbox checkout | developer.paypal.com → Apps & Credentials → **Sandbox** → your app |
 | `PAYPAL_WEBHOOK_ID` | webhook verification | after adding `https://<your-host>/api/paypal/webhook` to the app (subscribe to `PAYMENT.AUTHORIZATION.CREATED` / `VOIDED` too) |
-| `CHECKOUT_INTENT`, `REVIEW_WINDOW_DAYS` | payment flow | default `AUTHORIZE` (hold, capture on acceptance) and 5 days; `CAPTURE` takes the money at checkout |
+| `CHECKOUT_INTENT`, `REVIEW_WINDOW_DAYS` | payment flow | default `AUTHORIZE` (hold at checkout, capture under the payment terms) and 5 days; `CAPTURE` takes the money at checkout |
 | `AI_DAILY_CALL_LIMIT`, `AI_DAILY_CALL_LIMIT_PER_USER` | AI budget | defaults 40 per day overall and 8 per account |
 | `MAX_UPLOAD_BYTES`, `MAX_DELIVERY_BYTES` | uploads | default 4 MiB per file and per delivery (Vercel rejects bodies over 4.5 MB) |
 | `ANTHROPIC_API_KEY`, `AI_MODEL` | real AI extraction | default `claude-opus-5-5`, effort `low`, daily call cap |
@@ -72,8 +108,8 @@ Without credentials the app shows a clear **setup state**. For offline developme
 3. Both approve the same version (edit something first to see approvals reset).
 4. Buyer → **Payment** → pay with the PayPal sandbox buyer. PayPal now **holds** the money; nothing is captured.
 5. Seller → **Delivery** → upload two concept PNGs and a final PNG (no SVG) → see *Final logo files: SVG — Not met*, linked to the source line.
-6. Buyer reports the problem → seller uploads the SVG → buyer chooses **Accept and release** (this captures the held payment) and withdraws the objection.
-7. **History & export** → download the HTML or JSON record.
+6. Buyer reports the problem → seller uploads the SVG → buyer chooses **Accept** → **Accept and capture the held 300.00 USD**, then withdraws the objection.
+7. The agreement reads **Complete** → **View evidence record**, or **History & export** → download the HTML or JSON record.
 
 ## Scripts
 
@@ -81,7 +117,7 @@ Without credentials the app shows a clear **setup state**. For offline developme
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js development, production build, production server |
 | `npm run typecheck` / `lint` | TypeScript and ESLint |
-| `npm test` | Vitest: 67 unit + service-level failure cases (mock PayPal, real SQLite) |
+| `npm test` | Vitest: 77 unit + service-level failure cases (mock PayPal, real SQLite) |
 | `npm run test:e2e` | Playwright browser journey (run `npm run build` first; fixture mode) |
 | `npm run paypal:check` | Live sandbox: OAuth, create order, idempotent retry, read back |
 | `npm run paypal:verify` | Re-read the latest completed capture (and, for holds, the authorization) from PayPal and compare with the stored record |
@@ -112,6 +148,7 @@ Without credentials the app shows a clear **setup state**. For offline developme
 
 - **Claude Code** (Anthropic; model Claude Opus 5.5) wrote most of the code, tests and documentation under the author's direction.
 - **Claude API** is the runtime AI inside the app (see above).
+- **ElevenLabs** (AI voice) for the demo video's voice-over. The screen footage is a real recording of the app (Playwright), not generated.
 
 ## Third-party software
 

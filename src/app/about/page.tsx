@@ -1,6 +1,9 @@
 import { Card } from "@/components/ui";
+import { env } from "@/lib/env";
+import { paymentTerms } from "@/lib/payment-terms";
 
 export default function About() {
+  const terms = paymentTerms(env().REVIEW_WINDOW_DAYS);
   return (
     <div className="mx-auto max-w-3xl space-y-4 text-sm leading-relaxed">
       <h1 className="text-2xl font-semibold tracking-tight">How PromiseTrace works, and what it does not do</h1>
@@ -12,7 +15,7 @@ export default function About() {
           <li><strong>AI (Claude, via the Anthropic API)</strong> proposes the structured brief and clarification questions. It must quote the source for every value; our code checks that the quote exists and mentions that value, or the value stays unknown. AI never decides whether a delivery is acceptable.</li>
           <li><strong>Deterministic code</strong> checks money arithmetic, PayPal status and reconciliation fields, file types (from file contents), counts, the deadline in the agreed timezone, and revision counts.</li>
           <li><strong>People</strong> approve the brief (both sides, same version) and decide whether the work is satisfactory. A download is never treated as acceptance.</li>
-          <li><strong>PayPal</strong> is the source of truth for payment. At checkout PayPal places a hold (authorization) for the approved price; the agreement counts as funded only when PayPal returns it as CREATED with the expected amount. The hold is captured when the buyer accepts the delivery (or by the seller after a review window with every check met and no open objection), and released if the seller cancels or the deadline passes with nothing delivered. A payment is shown as paid only when PayPal returns a COMPLETED capture with the expected amount and identifiers. PayPal guarantees held funds for 3 days and keeps a hold for up to 29 days.</li>
+          <li><strong>PayPal</strong> is the source of truth for payment. At checkout PayPal places a hold (authorization) for the approved price; the agreement counts as funded only when PayPal returns it as CREATED with the expected amount. {terms.short} The seller can cancel and release the hold; the buyer can release it if the deadline passes with nothing delivered. A payment is shown as paid only when PayPal returns a COMPLETED capture with the expected amount and identifiers. A hold lasts up to 29 days. {terms.timing} Reauthorization is not built.</li>
         </ul>
       </Card>
       <Card title="Limits">

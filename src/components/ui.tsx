@@ -44,6 +44,8 @@ export const RESULT_PILL: Record<string, { tone: Tone; label: string }> = {
   NEEDS_REVIEW: { tone: "review", label: "Needs review" },
   PENDING: { tone: "neutral", label: "Pending" },
   NOT_CHECKABLE: { tone: "review", label: "Buyer to confirm" },
+  NOT_AGREED: { tone: "neutral", label: "Not agreed (optional)" },
+  CONFIRMED_BY_BUYER: { tone: "agreed", label: "Confirmed by buyer" },
 };
 
 export const STATUS_PILL: Record<string, { tone: Tone; label: string }> = {

@@ -4,11 +4,14 @@ import { sha256Hex } from "@/lib/hash";
 import { currentUser } from "@/lib/session";
 import { AcceptInviteForm } from "@/components/forms";
 import { Banner, Card } from "@/components/ui";
+import { env } from "@/lib/env";
+import { paymentTerms } from "@/lib/payment-terms";
 
 export default async function Invite({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const deal = await prisma.deal.findUnique({ where: { inviteTokenHash: sha256Hex(token) }, include: { seller: { select: { name: true } } } });
   const user = await currentUser();
+  const terms = paymentTerms(env().REVIEW_WINDOW_DAYS);
   const valid = deal && !deal.deletedAt && (!deal.inviteExpiresAt || deal.inviteExpiresAt > new Date());
   return (
     <div className="mx-auto max-w-lg">
@@ -18,7 +21,8 @@ export default async function Invite({ params }: { params: Promise<{ token: stri
         ) : (
           <div className="space-y-4 text-sm">
             <p><strong>{deal.seller.name}</strong> invited you to review <strong>{deal.title}</strong> as the buyer.</p>
-            <p className="text-muted">You will see the proposed brief and the exact source text it came from. Nothing is agreed until both of you approve the same version, and PayPal only holds the payment at checkout: it is captured only when you accept the delivery.</p>
+            <p className="text-muted">You will see the proposed brief and the exact source text it came from. Nothing is agreed until both of you approve the same version.</p>
+            <p className="text-muted" data-testid="invite-terms"><strong className="text-ink">Payment terms.</strong> {terms.short} {terms.timing}</p>
             {user ? (
               <>
                 <p>Signed in as {user.name}.</p>

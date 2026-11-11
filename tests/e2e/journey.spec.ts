@@ -63,6 +63,10 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   await expect(seller.getByText(/Only the buyer can start checkout/)).toBeVisible();
   await tab(buyer, dealUrl, "payment");
   await expect(buyer.getByText("FIXTURE checkout.")).toBeVisible();
+  // The buyer sees the review period and the seller-capture conditions before authorizing.
+  const terms = buyer.getByTestId("payment-terms");
+  await expect(terms).toContainText(/\d+-day review period that starts with the latest delivery/);
+  await expect(terms).toContainText("PayPal capture is most likely to succeed within the first three days of authorization.");
   await buyer.getByRole("button", { name: /Simulate a hold of 300.00 USD/ }).click();
   await expect(buyer.getByText("FIXTURE — not PayPal")).toBeVisible();
   await expect(buyer.getByText(/PayPal holds 300.00 USD for this agreement/)).toBeVisible();
@@ -106,11 +110,21 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   await expect(buyer.getByText(/Acceptance recorded\. PayPal captured the held payment/)).toBeVisible();
   await tab(buyer, dealUrl, "overview");
   await expect(buyer.getByText("Open buyer objections")).toBeVisible();
+  // Paid and accepted, but not Complete while the objection is open.
+  await expect(buyer.getByTestId("agreement-status")).toHaveText("Objection open (1) · FIXTURE");
+  await expect(buyer.getByTestId("complete-banner")).toHaveCount(0);
   await tab(buyer, dealUrl, "delivery");
   await buyer.getByLabel(/Withdraw an objection/).check();
   await buyer.getByLabel("Message (optional)").fill("SVG received, thanks.");
   await buyer.getByRole("button", { name: "Record my response" }).click();
   await expect(buyer.getByText("Recorded.")).toBeVisible();
+
+  // --- Captured, accepted, objection withdrawn: Complete, with the fixture payment still labelled as simulated
+  await tab(buyer, dealUrl, "overview");
+  await expect(buyer.getByTestId("agreement-status")).toHaveText("Complete · FIXTURE");
+  const banner = buyer.getByTestId("complete-banner");
+  await expect(banner).toContainText("Complete (FIXTURE: simulated payment, not a PayPal transaction)");
+  await expect(banner.getByRole("link", { name: "View evidence record" })).toHaveAttribute("href", /export\?format=html&view=1$/);
 
   // --- History and export
   await tab(seller, dealUrl, "record");
@@ -120,6 +134,10 @@ test("seller and buyer agree, pay (fixture), catch the missing SVG, fix it and k
   expect(res.ok()).toBeTruthy();
   const record = await res.json();
   expect(record.history.hashChainIntact).toBe(true);
+  expect(record.status).toMatchObject({ key: "COMPLETE", simulatedPayment: true });
+  const view = await seller.request.get(`/api/deals/${dealId}/export?format=html&view=1`);
+  expect(view.headers()["content-disposition"]).toMatch(/^inline;/);
+  expect(await view.text()).toContain("Status: Complete · FIXTURE");
   expect(record.payment.assertionType).toBe("fixture_not_paypal");
   expect(record.payment).toMatchObject({ flow: "hold_at_checkout_capture_on_acceptance", status: "COMPLETED", captureTrigger: "BUYER_ACCEPTED" });
   expect(JSON.stringify(record)).not.toContain("@example.test");

@@ -1,17 +1,25 @@
-# Demo video script — 2:45 (must stay under 3:00)
+# Demo video script — 2:29 (must stay under 3:00)
 
-Record the real software (sandbox), 1080p, browser at 125 % zoom. No music with copyright; no PayPal logos beyond what the PayPal sandbox window itself shows. Two browser profiles side by side or switched: **Seller (Priya)** and **Buyer (Alex)**. Prepare beforehand: accounts seeded, sandbox Personal buyer ready, the three demo files on the desktop (`concept-a.png`, `concept-b.png`, `northwind-final.png`, `northwind-final.svg`).
+The video is a real recording of the app, not generated footage. `scripts/demo-video/record.mjs` drives two browser contexts (**Seller Priya** and **Buyer Alex**, the fictional seeded demo accounts) through one live journey: real Claude extraction, PayPal **sandbox** authorization and capture with PayPal's published test Mastercard, and the files in `demo-files/`. `scripts/demo-video/cards.mjs` renders the title and closing cards. The voice-over is ElevenLabs (AI voice); captions are burned in. No music, and no PayPal logos beyond what PayPal's own sandbox window shows.
 
-| Time | Screen | Voice-over (approx.) |
+The video centres on four moments: **the missing SVG**, **the corrected delivery**, **the buyer's acceptance**, and **the exported evidence record**.
+
+| Time | Screen | Voice-over |
 |---|---|---|
-| 0:00–0:15 | Title card → landing page | "Priya designs logos in Bengaluru. Alex runs a coffee shop in Portland. They agreed a $300 logo package in an email. PromiseTrace makes sure both remember the same deal — and shows what was delivered." |
-| 0:15–0:40 | Seller: New agreement → paste conversation → Create | "Priya pastes the email. Claude proposes a brief: two PNG concepts, final files in PNG **and** SVG, two revisions, $300, due 20 November, 5 PM New York time. Every value links to the sentence it came from — if it can't be quoted, it stays unknown." Hover a source chip; show Sources tab highlight briefly. |
-| 0:40–0:55 | Open question + invite | "It also asks what it can't answer — is the colour palette included? Priya sends Alex a private link." |
-| 0:55–1:15 | Buyer joins → edits a field → approvals reset → both approve v2 | "Alex joins, answers the question by editing the brief — that creates version 2 and clears earlier approvals. Both approve the same version; the approval is bound to that exact content." |
-| 1:15–1:40 | Buyer: Payment → PayPal sandbox popup → pay → banner "PayPal holds 300.00 USD" → record | "Alex pays with PayPal — but PayPal only holds the money. The order is created on our server from the approved price, and we ask PayPal for an authorization, not a capture. Priya can start work knowing the money is there; Alex knows it isn't gone yet. Here is the real sandbox authorization, held until December." |
-| 1:40–2:05 | Seller: Delivery → upload concepts + final PNG → "SVG — Not met" → Overview row with source chip | "Priya uploads the concepts and the final PNG — and forgets the SVG. Code, not AI, reads the files and flags it, pointing at 'final logo files in PNG and SVG formats' in the approved brief." |
-| 2:05–2:20 | Buyer reports problem → seller uploads SVG → all met | "Alex reports the problem. Priya adds the SVG; every checkable item is now met." |
-| 2:20–2:35 | Buyer: "Accept and release 300.00 USD" → capture COMPLETED → History tab → Export | "Alex accepts — and that is what releases the money: PayPal captures the hold for Priya. If Alex went silent, Priya could capture after five days only if every check passes. Everything is in one hash-chained history, labelled: recorded by PromiseTrace, confirmed by PayPal, stated by a person, or AI interpretation." |
-| 2:35–2:45 | Limits card | "PayPal holds the money, not us, and we don't decide PayPal claims. PromiseTrace makes payment follow what was agreed and delivered." |
+| 0:00–0:14 | Title card → landing page | "Priya designs logos in Bengaluru. Alex runs a coffee shop in Portland. They agreed a three hundred dollar logo job by email. PromiseTrace makes the payment follow what they agreed." |
+| 0:14–0:29 | Seller: New agreement → fictional example → Create; Claude's brief with source chips; Sources tab | "Priya pastes the email. Claude proposes the brief, and every value must quote the email: two PNG concepts, and final files in PNG and SVG. Anything it can't quote stays unknown." |
+| 0:29–0:45 | Invite link → buyer joins → both approve version 1 → buyer's **Payment terms** card above the PayPal buttons | "Alex joins by a private link, and both approve the same version. Before paying, Alex sees the terms. Accepting captures the money. Priya can only capture it alone after a five-day review, with nothing missing, flagged or open." |
+| 0:45–0:59 | PayPal sandbox card form → "PayPal holds 300.00 USD" → payment record (authorization CREATED) | "Alex pays with PayPal. The order is created on the server from the approved price, with intent authorize, so PayPal holds three hundred dollars instead of taking it. Nothing is captured yet." |
+| 0:59–1:15 | **Seller delivers concepts + final PNG, no SVG** → *Final logo files: SVG — Not met* → source chip | "Priya delivers the concepts and the final PNG, but forgets the SVG. Code, not AI, reads the file bytes. Final logo files, SVG: not met, linked to the exact sentence in the brief." |
+| 1:15–1:23 | Seller's Payment tab: status *Delivery checks unresolved (1)*, capture blocked | "While the SVG is missing, Priya cannot capture the money herself. Only Alex's acceptance can." |
+| 1:23–1:31 | Buyer reports the problem against D2 → **seller uploads the SVG as delivery 2** | "Alex reports the problem against that requirement. Priya adds the SVG, and every checkable item is now met." |
+| 1:31–1:41 | **Buyer accepts** → "PayPal captured the held payment" → payment record COMPLETED | "Alex accepts the corrected delivery, and that is what releases the money. PayPal captures the hold, and the capture comes back completed." |
+| 1:41–1:49 | Buyer withdraws the objection → **Complete** banner → *View evidence record* | "Alex withdraws the objection. Captured, accepted, nothing open: the agreement now reads Complete." |
+| 1:49–2:09 | **Exported evidence record** (HTML), scrolled: status, PayPal IDs, requirements with source quotes, deliveries with hashes, history | "The evidence record shows the agreed brief with its source quotes, both deliveries with file hashes, PayPal's order, hold and capture IDs, and a hash-chained history. Every entry says who stands behind it: PromiseTrace, PayPal's API, a person, or AI." |
+| 2:09–2:29 | Limits card | "This is a sandbox, single-merchant build. Holds last up to twenty-nine days, and PayPal capture is most likely to succeed within the first three days of authorization. The checks cover format, count and deadline, not taste. PromiseTrace: payment that follows the promise." |
 
-Cut list if long: shorten 0:40–0:55 and the Sources highlight.
+## Re-recording
+
+1. `npm run build`, then start a live server on a fresh throwaway database: `node scripts/live-server.mjs` (port 3300, `live-check.db`, needs PayPal sandbox and Anthropic credentials in `.env`).
+2. `DEMO_BASE=http://localhost:3300 node scripts/demo-video/record.mjs <outDir>` records both people and writes `marks.json`.
+3. `node scripts/demo-video/cards.mjs <outDir>` renders the cards; the edit trims each scene to its `marks.json` times and fits it to its narration line.

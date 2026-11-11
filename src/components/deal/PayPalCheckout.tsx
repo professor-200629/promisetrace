@@ -30,7 +30,7 @@ async function post(url: string, body?: unknown) {
 
 function describe(outcome: string, reason?: string): Msg {
   switch (outcome) {
-    case "AUTHORIZED": return { tone: "agreed", text: "PayPal confirmed the hold. The money stays reserved on your payment method and is captured only when you accept the delivery. The agreement is now locked." };
+    case "AUTHORIZED": return { tone: "agreed", text: "PayPal confirmed the hold. The money stays reserved on your payment method and nothing is captured yet; the payment terms above say when it can be. The agreement is now locked." };
     case "COMPLETED": return { tone: "agreed", text: "PayPal confirmed the capture as COMPLETED. The agreement is now paid and locked." };
     case "PENDING": return { tone: "review", text: `PayPal reports the payment as PENDING${reason ? ` (${reason})` : ""}. It is not treated as paid or held until PayPal completes it.` };
     case "DECLINED": return { tone: "bad", text: `PayPal did not complete the payment${reason ? ` (${reason})` : ""}. Nothing is marked paid.` };
@@ -113,7 +113,7 @@ export function PayPalCheckout({ dealId, clientId, currency, mode, amountLabel, 
   return (
     <div className="space-y-3">
       {hold
-        ? <p className="text-sm text-muted">Pay {amountLabel} with PayPal <strong>sandbox</strong>. PayPal <strong>holds</strong> the money on your payment method; it is captured only when you accept the delivery. If the seller cancels, or the deadline passes with nothing delivered, the hold is released and nothing is charged.</p>
+        ? <p className="text-sm text-muted">Pay {amountLabel} with PayPal <strong>sandbox</strong>. PayPal <strong>holds</strong> the money on your payment method; nothing is captured at checkout. The payment terms above say when it can be captured or released.</p>
         : <p className="text-sm text-muted">Pay {amountLabel} with a PayPal <strong>sandbox</strong> buyer account. Approving in the PayPal window is not payment; PromiseTrace confirms the capture with PayPal afterwards.</p>}
       {loading && <p className="text-sm text-muted" aria-live="polite">Loading PayPal…</p>}
       <div ref={box} className="max-w-sm" />

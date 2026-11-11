@@ -18,6 +18,7 @@ import { DeliveryUpload } from "@/components/deal/DeliveryUpload";
 import { BuyerResponse, DeleteDeal } from "@/components/deal/BuyerResponse";
 import { HoldControls } from "@/components/deal/HoldControls";
 import { holdLengthWarning } from "@/lib/hold-rules";
+import { paymentTerms } from "@/lib/payment-terms";
 
 const utcMinute = (d: Date) => `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
@@ -55,13 +56,24 @@ export default async function DealPage({ params, searchParams }: { params: Promi
           <p className="text-xs uppercase tracking-wide text-muted">Agreement · you are the {view.role.toLowerCase()}</p>
           <h1 className="text-2xl font-semibold tracking-tight">{view.deal.title}</h1>
           <p className="text-sm text-muted">Seller {view.participants.seller} · Buyer {view.participants.buyer ?? "not joined yet"}</p>
+          <p className="mt-2" data-testid="agreement-status"><Pill tone={view.status.tone}>{view.status.label}</Pill></p>
         </div>
         <a href={`/api/deals/${id}/export?format=html`} className="rounded-lg border border-line bg-white px-3 py-2 text-sm">Export evidence record</a>
       </div>
 
       <StatusTiles view={view} />
 
-      {next && (
+      {view.status.key === "COMPLETE" && (
+        <div data-testid="complete-banner" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-agreed/30 bg-agreed-bg px-4 py-3">
+          <div className="text-sm">
+            <p className="font-semibold text-agreed">Complete{view.status.simulated ? " (FIXTURE: simulated payment, not a PayPal transaction)" : ""}</p>
+            <p className="text-slate-700">{view.status.detail}</p>
+          </div>
+          <a href={`/api/deals/${id}/export?format=html&view=1`} target="_blank" rel="noopener" className="rounded-lg bg-ink px-3 py-2 text-sm text-white">View evidence record</a>
+        </div>
+      )}
+
+      {next && view.status.key !== "COMPLETE" && (
         <div className={cx("flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3", next.mine ? "border-ink bg-white" : "border-line bg-slate-50")}>
           <p className="text-sm"><span className="font-semibold">{next.mine ? "Your next step: " : "Waiting: "}</span>{next.text}</p>
           {next.tab && next.tab !== tab && <Link href={`/deals/${id}?tab=${next.tab}`} className="rounded-lg bg-ink px-3 py-2 text-sm text-white">Go</Link>}
@@ -108,7 +120,7 @@ function StatusTiles({ view }: { view: DealView }) {
       <div className="rounded-xl border border-observed/25 bg-observed-bg p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-observed">Observed</p>
         <p className="mt-1 text-sm font-medium">{view.summary.observed}</p>
-        <p className="mt-1 text-xs text-slate-600">{view.summary.met} of {view.summary.total} requirements met · {view.acceptance ? `buyer ${actionLabel(view.acceptance.type).toLowerCase()}` : "no buyer acceptance yet"}</p>
+        <p className="mt-1 text-xs text-slate-600">{view.summary.met} of {view.summary.total} requirements met · {view.hold.buyerAccepted ? `buyer accepted delivery ${view.deliveries.at(-1)?.number}` : view.acceptance ? `latest delivery not accepted yet (last response: ${actionLabel(view.acceptance.type).toLowerCase()})` : "no buyer acceptance yet"}</p>
       </div>
       <div className={cx("rounded-xl border p-4", view.summary.needsReview > 0 ? "border-review/30 bg-review-bg" : "border-line bg-white")}>
         <p className={cx("text-xs font-semibold uppercase tracking-wide", view.summary.needsReview > 0 ? "text-review" : "text-muted")}>Needs review</p>
@@ -138,16 +150,20 @@ function nextStep(v: DealView): { text: string; mine: boolean; tab?: string } | 
     if (p?.status === "VOIDED") return { text: "The hold was released to the buyer and nothing was charged. This agreement is closed.", mine: false, tab: "record" };
     if (p?.status === "EXPIRED" || v.payment.holdExpired) return { text: "PayPal's hold expired before it was captured; nothing was charged. Agree a new payment before more work is delivered.", mine: false, tab: "payment" };
     if (p && ["REFUNDED", "REVERSED", "PARTIALLY_REFUNDED"].includes(p.status)) return { text: `PayPal reports this payment ${p.status.toLowerCase()}.`, mine: false, tab: "payment" };
-    return seller ? { text: "Waiting for the buyer to pay through PayPal.", mine: false, tab: "payment" } : { text: "Pay for the approved brief with PayPal (sandbox). PayPal holds the money until you accept the delivery.", mine: true, tab: "payment" };
+    return seller ? { text: "Waiting for the buyer to pay through PayPal.", mine: false, tab: "payment" } : { text: "Read the payment terms, then pay for the approved brief with PayPal (sandbox). PayPal holds the money; nothing is captured at checkout.", mine: true, tab: "payment" };
   }
   if (v.deliveries.length === 0) return seller ? { text: held ? "PayPal holds the buyer's payment. Upload the promised files." : "Upload the promised files.", mine: true, tab: "delivery" } : { text: "Waiting for the seller to deliver.", mine: false, tab: "delivery" };
   const notMet = v.rows.filter((r) => r.result === "NOT_MET");
   if (notMet.length) return seller ? { text: `Not met yet: ${notMet.map((r) => r.label).join("; ")}. Upload the missing items.`, mine: true, tab: "delivery" } : { text: `Not met yet: ${notMet.map((r) => r.label).join("; ")}. You can report a problem or wait for the seller.`, mine: true, tab: "delivery" };
-  if (!v.acceptance || v.acceptance.type !== "ACCEPT") {
+  if (!v.hold.buyerAccepted) {
     return seller
-      ? { text: held ? `All checkable items are present. The held payment is captured when the buyer accepts${v.hold.reviewEndsAt ? `; if they do not respond, you can capture it yourself from ${utcMinute(v.hold.reviewEndsAt)} while nothing is flagged` : ""}.` : "All checkable items are present. Waiting for the buyer's response.", mine: false, tab: "delivery" }
+      ? { text: !held ? "All checkable items are present. Waiting for the buyer's response."
+          : v.status.key === "BUYER_TO_CONFIRM" ? `All checkable items are present. ${v.status.detail}`
+          : v.status.key === "CHECKS_UNRESOLVED" || v.openObjections.length ? `${v.status.detail}`
+          : `All checkable items are present. The held payment is captured when the buyer accepts${v.hold.reviewEndsAt ? `; if they do not respond, you can capture it yourself from ${utcMinute(v.hold.reviewEndsAt)} while nothing is flagged or open` : ""}.`, mine: false, tab: "delivery" }
       : { text: held ? "Review the delivery and record your response. Accepting captures the held payment." : "Review the delivery and record your response.", mine: true, tab: "delivery" };
   }
+  if (p?.status === "CAPTURE_PENDING") return { text: "Capture pending at PayPal. It is not counted as paid until PayPal completes it.", mine: false, tab: "payment" };
   if (held) return seller ? { text: "The buyer accepted, but the held payment is not captured yet. Capture it on the Payment tab.", mine: true, tab: "payment" } : { text: "You accepted. The held payment has not been captured yet; the seller can retry the capture.", mine: false, tab: "payment" };
   if (v.openObjections.length) return { text: "The buyer accepted, but an objection is still open.", mine: !seller, tab: "delivery" };
   return { text: v.payment.isPaid ? "Delivered, checked, accepted and paid. Export the record for your files." : "Delivered, checked and accepted. Export the record for your files.", mine: false, tab: "record" };
@@ -291,6 +307,7 @@ function PaymentTab({ view }: { view: DealView }) {
   const price = w?.content.price;
   const amountLabel = price?.amountMinor != null && price.currency ? formatMoney(price.amountMinor, price.currency) : "";
   const isHoldFlow = p?.intent === "AUTHORIZE";
+  const terms = paymentTerms(env().REVIEW_WINDOW_DAYS);
   const lengthWarning = w ? holdLengthWarning(deadlineInstant(w.content.deadline)?.utc ?? null, new Date(), env().REVIEW_WINDOW_DAYS) : null;
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
@@ -300,18 +317,18 @@ function PaymentTab({ view }: { view: DealView }) {
           <Banner tone="bad"><strong>PayPal&apos;s hold expired{h.expiresAt ? ` on ${utcMinute(h.expiresAt)}` : ""}.</strong> Nothing was captured and nothing can be captured now. Do not deliver more work against this payment.</Banner>
         )}
         {p && h.held && (
-          <Banner tone="observed"><strong>PayPal holds {formatMoney(p.amountMinor, p.currency)} for this agreement.</strong> Nothing is captured yet. It is captured when the buyer accepts the delivery{h.expiresAt ? `; if nobody captures or releases it, PayPal's hold expires ${utcMinute(h.expiresAt)} and the money stays with the buyer` : ""}.</Banner>
+          <Banner tone="observed"><strong>PayPal holds {formatMoney(p.amountMinor, p.currency)} for this agreement.</strong> Nothing is captured yet. {terms.short.replace(/^PayPal holds the payment at checkout\. /, "")}{h.expiresAt ? ` If nobody captures or releases it, PayPal's hold expires ${utcMinute(h.expiresAt)} and the money stays with the buyer.` : ""}</Banner>
         )}
         {p && (
           <Card title="Payment record" actions={<Pill tone={p.mode === "FIXTURE" ? "review" : "agreed"}>{p.mode === "FIXTURE" ? "FIXTURE — not PayPal" : "Confirmed with PayPal sandbox API"}</Pill>}>
             <dl className="grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1 text-sm">
               <dt className="text-muted">Status</dt><dd><strong>{p.status}</strong>{p.statusReason ? ` — ${p.statusReason}` : ""}</dd>
-              <dt className="text-muted">Flow</dt><dd>{isHoldFlow ? "Hold at checkout (PayPal authorization), capture when the buyer accepts" : "Captured at checkout"}</dd>
+              <dt className="text-muted">Flow</dt><dd>{isHoldFlow ? "Hold at checkout (PayPal authorization), captured under the payment terms" : "Captured at checkout"}</dd>
               <dt className="text-muted">Amount</dt><dd>{formatMoney(p.amountMinor, p.currency)} (from approved version hash {shortHash(p.versionHash)})</dd>
               <dt className="text-muted">PayPal order</dt><dd className="font-mono text-xs">{p.paypalOrderId ?? "—"}</dd>
               {isHoldFlow && <><dt className="text-muted">Authorization (hold)</dt><dd className="font-mono text-xs">{p.authorizationId ?? "—"} {p.authorizationStatus ? `(${p.authorizationStatus})` : ""}</dd></>}
               {p.authorizedAt && <><dt className="text-muted">Held since</dt><dd>{fmtTime(p.authorizedAt)}</dd></>}
-              {h.honorEndsAt && h.held && <><dt className="text-muted">Capture reliable until</dt><dd>{utcMinute(h.honorEndsAt)} <span className="text-xs text-muted">(PayPal&apos;s 3-day honor period; a later capture usually works but can fail)</span></dd></>}
+              {h.honorEndsAt && h.held && <><dt className="text-muted">Best capture odds until</dt><dd>{utcMinute(h.honorEndsAt)} <span className="text-xs text-muted">(PayPal capture is most likely to succeed within the first three days of authorization; a later capture can fail)</span></dd></>}
               {p.authorizationExpiresAt && <><dt className="text-muted">Hold expires</dt><dd>{utcMinute(p.authorizationExpiresAt)}</dd></>}
               {p.voidedAt && <><dt className="text-muted">Hold released</dt><dd>{fmtTime(p.voidedAt)}</dd></>}
               <dt className="text-muted">Capture</dt><dd className="font-mono text-xs">{p.captureId ?? "—"} {p.captureStatus ? `(${p.captureStatus})` : ""}</dd>
@@ -325,6 +342,7 @@ function PaymentTab({ view }: { view: DealView }) {
         {p && h.held && (view.role === "SELLER" || view.role === "BUYER") && (
           <Card title="The held payment">
             <HoldControls dealId={view.deal.id} role={view.role} amountLabel={formatMoney(p.amountMinor, p.currency)} sellerCapture={h.sellerCapture} sellerVoid={h.sellerVoid} buyerVoid={h.buyerVoid} />
+            {view.role === "SELLER" && <p className="mt-4 border-t border-line pt-3 text-xs text-muted">{terms.timing}</p>}
             {view.role === "BUYER" && <p className="mt-4 border-t border-line pt-3 text-xs text-muted">To complete the payment, accept the delivery on the Delivery tab. Accepting captures the held payment.</p>}
           </Card>
         )}
@@ -332,7 +350,15 @@ function PaymentTab({ view }: { view: DealView }) {
           <Banner tone="review"><strong>Check the timing before paying.</strong> {lengthWarning}</Banner>
         )}
         {canPay && setup.state !== "missing_credentials" && (
-          <Card title={intent === "AUTHORIZE" ? "Pay with PayPal (held until you accept)" : "Pay with PayPal"}>
+          <Card title={intent === "AUTHORIZE" ? "Pay with PayPal (held, not taken)" : "Pay with PayPal"}>
+            {intent === "AUTHORIZE" && (
+              <div data-testid="payment-terms" className="mb-4 rounded-lg border border-line bg-slate-50 p-3 text-sm">
+                <p className="font-medium">Payment terms: read before you pay</p>
+                <p className="mt-1 text-xs text-muted">PayPal holds {amountLabel} on your payment method. Nothing is captured until one of these happens. Review period: {env().REVIEW_WINDOW_DAYS} days after each delivery.</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed">{terms.conditions.map((c) => <li key={c}>{c}</li>)}</ul>
+                <p className="mt-2 text-xs text-muted">{terms.timing}</p>
+              </div>
+            )}
             <PayPalCheckout dealId={view.deal.id} clientId={setup.state === "ready" ? env().PAYPAL_CLIENT_ID ?? null : null} currency={price!.currency!} mode={setup.state === "ready" ? "sandbox" : "fixture"} amountLabel={amountLabel} intent={intent} />
           </Card>
         )}
@@ -352,7 +378,8 @@ function PaymentTab({ view }: { view: DealView }) {
           <ul className="list-disc space-y-1 pl-4 text-xs leading-relaxed">
             <li>The order is created on the server with the price, currency and version from the database. The browser cannot change them.</li>
             <li>Approving in the PayPal window is not payment. The agreement counts as funded only when PayPal returns the hold (authorization) as CREATED, or a capture as COMPLETED, with the exact amount and reconciliation IDs.</li>
-            <li>A held payment is captured only when the buyer accepts, or by the seller after the {env().REVIEW_WINDOW_DAYS}-day review window if every check is met and no objection is open. The seller can cancel and release the hold; the buyer can release it if the deadline passes with nothing delivered.</li>
+            <li>{terms.short} The seller can cancel and release the hold; the buyer can release it if the deadline passes with nothing delivered.</li>
+            <li>{terms.timing}</li>
             <li>PENDING, DENIED, VOIDED, EXPIRED, DECLINED, REFUNDED and REVERSED are shown as such and are never treated as paid.</li>
             <li>Create, authorize, capture and void calls carry a PayPal-Request-Id, so a retried click cannot create a second order, hold or capture.</li>
             <li>A screenshot of a payment is not evidence here; only PayPal API responses and signed webhooks are.</li>
@@ -432,7 +459,8 @@ function RecordTab({ view }: { view: DealView }) {
       <aside className="space-y-4">
         <Card title="Export">
           <div className="flex flex-col gap-2 text-sm">
-            <a className="rounded-lg bg-ink px-3 py-2 text-center text-white" href={`/api/deals/${view.deal.id}/export?format=html`}>Download HTML record</a>
+            <a className="rounded-lg bg-ink px-3 py-2 text-center text-white" href={`/api/deals/${view.deal.id}/export?format=html&view=1`} target="_blank" rel="noopener">View evidence record</a>
+            <a className="rounded-lg border border-line px-3 py-2 text-center" href={`/api/deals/${view.deal.id}/export?format=html`}>Download HTML record</a>
             <a className="rounded-lg border border-line px-3 py-2 text-center" href={`/api/deals/${view.deal.id}/export?format=json`}>Download JSON record</a>
           </div>
           <p className="mt-2 text-xs text-muted">Exports contain names, sources, hashes and PayPal IDs, but no emails or PayPal payer IDs. A hash chain shows whether entries were altered afterwards; it does not prove that a statement is true.</p>

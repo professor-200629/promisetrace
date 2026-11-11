@@ -27,7 +27,7 @@ export type PayPalCapture = {
   update_time?: string;
 };
 
-/** A hold on the buyer's funds (Payments v2 authorization). Valid 29 days; PayPal honours the funds for 3 days. */
+/** A hold on the buyer's funds (Payments v2 authorization). Valid 29 days; capture is most likely to succeed in the first 3 (PayPal's honor period). */
 export type PayPalAuthorization = {
   id: string;
   status: string; // CREATED | CAPTURED | DENIED | PARTIALLY_CAPTURED | VOIDED | PENDING | EXPIRED

@@ -135,7 +135,7 @@ Result: **authorize, partial capture and void all work for this merchant** on th
 
 What did not work, recorded as found: PayPal's *redirect* checkout page (`checkoutnow?token=…`, guest card form) refused both test cards ("We weren't able to add this card") for an AUTHORIZE order **and** for a CAPTURE control order, so the refusal comes from that page, not from the intent. The app does not use that page.
 
-Not tested yet: the honor period (PayPal's documentation says funds are only guaranteed for 3 days after authorizing; capturing later may fail) and reauthorization. The `PAYMENT.AUTHORIZATION.*` webhooks were tested on the hosted app in 5d.
+Not tested yet: a capture after the honor period (PayPal's documentation says capture is most likely to succeed within the first three days of authorization; later, success depends on risk assessment and funds) and reauthorization. The `PAYMENT.AUTHORIZATION.*` webhooks were tested on the hosted app in 5d.
 
 ## 5d. Hosted journey with a held payment — 10 Nov 2026, 11:54–12:01 UTC
 
@@ -163,6 +163,27 @@ After redeploying the hardening changes:
 - History: 12 entries, chain intact; the seller's cancellation (USER_DECLARATION) is recorded before PayPal's VOIDED confirmation.
 
 Still not run live: a buyer paying with a sandbox **PayPal wallet** account (the developer account's sandbox accounts are Indian; a US sandbox Personal account has to be created by the account owner), seller capture after the review window (needs 5 real days), reauthorization (not built), refunds and disputes.
+
+## 5f. Buyer-confirm rule, Complete state and shared payment terms — 11 Nov 2026
+
+Changes: an agreed deliverable code cannot check (a format it cannot identify, such as `.ai`, or an item with no format or count) now blocks the seller's capture on the buyer's silence, so only the buyer's acceptance of the latest delivery can capture it. Optional fields the parties never agreed on (no deadline, no revision count) read "Not agreed (optional)" and block nothing. One agreement status (`src/lib/agreement-status.ts`) drives the page and the export: **Complete** only when PayPal confirmed the capture, the buyer accepted the latest delivery and no objection is open. Fixture payments stay labelled "· FIXTURE". The payment terms are written once (`src/lib/payment-terms.ts`) and shown on the landing page, the invite, the About page and the checkout (before the buyer authorizes). The three-day wording now follows PayPal's [authorization and honor period](https://developer.paypal.com/payment-methods/auth-honor/) page (updated 2 Oct 2026): "PayPal capture is most likely to succeed within the first three days of authorization."
+
+**Fixture runs (no network; disposable databases `test.db` and `e2e-test.db`, rebuilt for each run):**
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | pass, 0 errors |
+| `npm run lint` | pass, 0 errors, 0 warnings |
+| `npm test` | **77 passed, 0 failed** (7 files). New: `tests/integration/buyer-confirm.test.ts` (4 tests: an `.ai` item and an item with no format or count block seller capture after a backdated 6-day window, an acceptance of an earlier delivery does not carry over, never-agreed optional fields do not block, a flagged SVG still blocks) and `tests/unit/agreement-status.test.ts` (6 tests). Missing item, open objection and unexpired review window remain covered in `tests/integration/holds.test.ts`. |
+| `npm run build` | pass |
+| `npm run test:e2e` | **1 passed** (fixture PayPal and AI): the buyer sees the review period and seller-capture conditions before authorizing; "Objection open (1) · FIXTURE" after acceptance; "Complete · FIXTURE" after the objection is withdrawn; *View evidence record* opens the HTML record inline with "Status: Complete · FIXTURE". |
+
+**Live run (real Claude, PayPal sandbox; local production server on a fresh `live-check.db` via `scripts/live-server.mjs`; hosted Turso database not touched; webhooks cannot reach localhost, so PayPal's API responses were used):** the two-person journey in `scripts/demo-video/record.mjs`, run twice on 11 Nov, 15:51 and 16:01 UTC; the second run was on the final build.
+
+- Claude: `claude-opus-5-5`, status OK, 3,069 in + 465 out tokens (~$0.022), 5.6 s.
+- PayPal sandbox (Mastercard test card): order `93G0561019305463F`, authorization `55N55534VG1221826` CREATED → delivery 1 without the SVG (*Final logo files: SVG — Not met*; seller capture refused: "1 requirement is not met or flagged for review") → buyer objection → delivery 2 with the SVG → buyer accepted → capture `6P519524WX4164946` **COMPLETED** 300.00 USD (fee 14.16, net 285.84), trigger BUYER_ACCEPTED → objection withdrawn → **Complete**, 6 of 6 requirements met, 18 history entries, chain intact.
+- `npm run paypal:verify` against `live-check.db`: "MATCH: PayPal confirms this capture exactly as recorded"; authorization `55N55534VG1221826` CAPTURED.
+- In the first run (order `46C45660UE194012S`, capture `94E8982997650240E` COMPLETED, also verified), Claude also extracted an agreed "Colour palette suggestion" with no format or count. It showed as *Buyer to confirm*, and only the buyer's acceptance captured the payment. After acceptance it read *Confirmed by buyer*.
 
 ## 6. Live AI
 

@@ -10,11 +10,14 @@ import { computeChecks, type Check } from "@/lib/services/checks";
 import { openObjections } from "@/lib/services/buyer";
 import { EVENT_KIND_LABEL, verifyChain, type EventKind } from "@/lib/services/events";
 import { holdState } from "@/lib/hold-rules";
+import { agreementStatus } from "@/lib/agreement-status";
 import { env } from "@/lib/env";
 
 const isoMinute = (d: Date) => d.toISOString().replace(/:\d{2}\.\d{3}Z$/, "Z");
 
-export type RowResult = "MET" | "NOT_MET" | "NEEDS_REVIEW" | "PENDING" | "NOT_CHECKABLE";
+/** NOT_CHECKABLE = agreed, but only the buyer can confirm it. NOT_AGREED = an optional field the parties never agreed on; it never blocks anything. */
+/** CONFIRMED_BY_BUYER = an item code cannot check, confirmed by the buyer accepting the latest delivery (a person's statement, not a code check). */
+export type RowResult = "MET" | "NOT_MET" | "NEEDS_REVIEW" | "PENDING" | "NOT_CHECKABLE" | "NOT_AGREED" | "CONFIRMED_BY_BUYER";
 
 export type RequirementRow = {
   key: string;
@@ -108,7 +111,7 @@ export async function buildView(db: Db, dealId: string, role: Role) {
       agreedStatus: b.deadline.status, refs: b.deadline.refs,
       observed: dc?.observed ?? (effective ? "Nothing delivered yet" : "Checked after payment"),
       observedBy: dc ? "PromiseTrace checks" : "Nothing yet",
-      result: dc ? (deliveries.length === 0 && dc.result === "NOT_CHECKABLE" && dl ? "PENDING" : CHECK_TO_ROW[dc.result]) : "PENDING",
+      result: !b.deadline.date ? "NOT_AGREED" : dc ? ((deliveries.length === 0 && dc.result === "NOT_CHECKABLE" && dl) || dc.result === "NEEDS_REVIEW" ? "PENDING" : CHECK_TO_ROW[dc.result]) : "PENDING",
       buyerResponse: lastBuyer(["deadline"]),
     });
     // Revisions
@@ -116,22 +119,15 @@ export async function buildView(db: Db, dealId: string, role: Role) {
     rows.push({
       key: "revisions", group: "Timing", label: "Revision rounds",
       agreed: allowed === null ? "Not agreed" : `${allowed} included`, agreedStatus: b.revisionRounds.status, refs: b.revisionRounds.refs,
-      observed: `${revisionRequests} revision request${revisionRequests === 1 ? "" : "s"} recorded`,
+      observed: `${revisionRequests} revision request${revisionRequests === 1 ? "" : "s"} recorded${allowed !== null ? ` (${allowed} included)` : ""}`,
       observedBy: revisionRequests ? "Buyer statement" : "Nothing yet",
-      result: allowed === null ? "NOT_CHECKABLE" : revisionRequests > allowed ? "NEEDS_REVIEW" : revisionRequests === 0 ? "PENDING" : "MET",
+      result: allowed === null ? "NOT_AGREED" : revisionRequests > allowed ? "NEEDS_REVIEW" : deliveries.length === 0 ? "PENDING" : "MET",
       buyerResponse: lastBuyer(["revisions"]),
     });
   }
 
   const acceptance = [...buyerActions].reverse().find((a) => a.type === "ACCEPT" || a.type === "ACKNOWLEDGE_RECEIPT") ?? null;
   const fundedLabel = pay.isPaid ? "Paid agreement" : pay.isHeld ? "Funded agreement (payment held by PayPal)" : `Agreement (payment ${pay.latest?.status.replace(/_/g, " ").toLowerCase() ?? "not made"})`;
-  const summary = {
-    agreed: st.paid ? `${fundedLabel}: version ${st.paid.number}${effective && effective.row.id !== st.paid.id ? `, amended by version ${effective.row.number}` : ""}` : st.workingApproved ? `Version ${working!.row.number} approved by both — awaiting payment` : working ? `Version ${working.row.number} — approvals pending` : "No brief yet",
-    observed: deliveries.length ? `${deliveries.length} deliver${deliveries.length === 1 ? "y" : "ies"}, ${facts.length} file(s)` : "Nothing delivered",
-    needsReview: rows.filter((r) => r.result === "NOT_MET" || r.result === "NEEDS_REVIEW").length + objections.length,
-    met: rows.filter((r) => r.result === "MET").length,
-    total: rows.length,
-  };
 
   const sourceTexts = sources.map((s) => ({ label: s.label, text: s.text }));
   const invalidRefs = rows.flatMap((r) => r.refs).filter((r) => !refIsValid(r, sourceTexts)).length;
@@ -141,10 +137,35 @@ export async function buildView(db: Db, dealId: string, role: Role) {
     deliveries: deliveries.map((d) => ({ number: d.number, submittedAt: d.submittedAt })),
     buyerActions: buyerActions.map((a) => ({ type: a.type, createdAt: a.createdAt })),
     openObjectionCount: objections.length,
-    flaggedCount: rows.filter((r) => r.key !== "price" && (r.result === "NOT_MET" || r.result === "NEEDS_REVIEW")).length,
+    flaggedCount: rows.filter((r) => (r.group === "Deliverables" || r.key === "deadline") && (r.result === "NOT_MET" || r.result === "NEEDS_REVIEW")).length,
+    buyerConfirmCount: rows.filter((r) => r.group === "Deliverables" && r.result === "NOT_CHECKABLE").length,
     deadlineUtc: effective ? deadlineInstant(effective.content.deadline)?.utc ?? null : null,
     reviewWindowDays: env().REVIEW_WINDOW_DAYS,
     now: new Date(),
+  });
+
+  // Once the buyer accepts the latest delivery, the items only they could confirm read as confirmed by them.
+  if (hold.buyerAccepted) {
+    const n = deliveries.at(-1)!.number;
+    for (const r of rows) if (r.group === "Deliverables" && r.result === "NOT_CHECKABLE") Object.assign(r, { result: "CONFIRMED_BY_BUYER" as RowResult, observed: `${r.observed} The buyer accepted delivery ${n}.`, observedBy: "Buyer statement" });
+  }
+  const summary = {
+    agreed: st.paid ? `${fundedLabel}: version ${st.paid.number}${effective && effective.row.id !== st.paid.id ? `, amended by version ${effective.row.number}` : ""}` : st.workingApproved ? `Version ${working!.row.number} approved by both — awaiting payment` : working ? `Version ${working.row.number} — approvals pending` : "No brief yet",
+    observed: deliveries.length ? `${deliveries.length} deliver${deliveries.length === 1 ? "y" : "ies"}, ${facts.length} file(s)` : "Nothing delivered",
+    needsReview: rows.filter((r) => r.result === "NOT_MET" || r.result === "NEEDS_REVIEW").length + objections.length,
+    met: rows.filter((r) => r.result === "MET" || r.result === "CONFIRMED_BY_BUYER").length,
+    total: rows.filter((r) => r.result !== "NOT_AGREED").length,
+  };
+
+  const status = agreementStatus({
+    payment: pay.latest ? { status: pay.latest.status, intent: pay.latest.intent, mode: pay.latest.mode, captureTrigger: pay.latest.captureTrigger } : null,
+    isPaid: pay.isPaid, isHeld: pay.isHeld, holdExpired: pay.holdExpired,
+    approvedByBoth: !!st.workingApproved || !!st.paid,
+    latestDeliveryNumber: deliveries.at(-1)?.number ?? null,
+    buyerAcceptedLatest: hold.buyerAccepted,
+    openObjectionCount: objections.length,
+    unresolvedCheckCount: rows.filter((r) => (r.group === "Deliverables" || r.key === "deadline") && (r.result === "NOT_MET" || r.result === "NEEDS_REVIEW")).length,
+    buyerConfirmCount: rows.filter((r) => r.group === "Deliverables" && r.result === "NOT_CHECKABLE").length,
   });
 
   return {
@@ -160,6 +181,7 @@ export async function buildView(db: Db, dealId: string, role: Role) {
     working, effective, workingApproved: st.workingApproved, paidVersionId: st.paid?.id ?? null,
     payment: pay,
     hold,
+    status,
     deliveries: deliveries.map((d) => ({
       id: d.id, number: d.number, submittedAt: d.submittedAt, note: d.note, versionId: d.versionId,
       files: d.files.map((f) => ({ id: f.id, name: f.originalName, deliverableKey: f.deliverableKey, sizeBytes: f.sizeBytes, sha256: f.sha256, detectedType: f.detectedType, declaredExt: f.declaredExt, widthPx: f.widthPx, heightPx: f.heightPx, safetyNotes: JSON.parse(f.safetyNotes) as string[], receivedAt: f.receivedAt })),
@@ -192,6 +214,7 @@ export function evidenceJson(v: DealView) {
     generatedAt: new Date().toISOString(),
     disclaimer: "PromiseTrace records what was agreed, paid, delivered and stated. It does not hold funds, decide PayPal claims or guarantee PayPal Seller Protection. File hashes show whether a file changed; they do not prove the work is correct.",
     agreement: { id: v.deal.id, title: v.deal.title, createdAt: v.deal.createdAt, seller: v.participants.seller, buyer: v.participants.buyer },
+    status: { key: v.status.key, label: v.status.label, detail: v.status.detail, simulatedPayment: v.status.simulated },
     sources: v.sources.map((s) => ({ label: s.label, title: s.title, kind: s.kind, sha256: s.sha256, text: s.text })),
     versions: v.versions.map((x) => ({ number: x.number, kind: x.kind, origin: x.origin, contentHash: x.contentHash, createdAt: x.createdAt, superseded: !!x.supersededAt, paidAndLocked: !!x.lockedAt, approvals: x.approvals, approvedByBoth: x.approved })),
     agreedBrief: v.effective?.content ?? v.working?.content ?? null,

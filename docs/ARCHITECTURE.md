@@ -55,7 +55,8 @@ INITIATED ─create order intent AUTHORIZE─► ORDER_CREATED ─buyer approves
             ├─ PENDING ──► AUTHORIZATION_PENDING (not funded)   ├─ DENIED ──► AUTHORIZATION_DENIED
             └─ amount mismatch ──► MISMATCH
 AUTHORIZED ─buyer ACCEPTs latest delivery──────────────────────────────► capture (final, full amount)
-           ─seller, review window passed, all checks met, no objection─► capture
+           ─seller, review window passed, all checks met, nothing flagged, no objection,
+            no agreed item that only the buyer can confirm─► capture (always after PayPal's 3-day honor period)
            ─seller cancels (reason recorded) / buyer after missed deadline with nothing delivered─► VOIDED
            ─PayPal says expired/voided at capture time─► EXPIRED / VOIDED (never paid)
 capture ─► COMPLETED / CAPTURE_PENDING / DECLINED (same states and webhooks as below)
@@ -94,4 +95,4 @@ Pure function of (effective brief, all files so far). For each deliverable: per 
 - Retention: the seller can delete an agreement (cascade delete of sources, versions, files, history) only while PayPal has neither held nor moved money for it; after a hold or capture the record is kept for both sides, and `npm run retention` skips those agreements too (`src/lib/services/deals.ts`). PayPal's records are unaffected.
 - Auth API: `/api/auth/*` serves only sign-in, sign-up, sign-out and session; Better Auth's account-changing endpoints (change password, update user, delete user, session revocation, password reset) return 404, so shared demo accounts cannot be taken over.
 - Budgets: AI extraction has a daily cap overall and per account; one delivery is capped at 4 MiB to fit the host's 4.5 MB body limit.
-- Holds: a hold past PayPal's expiry time counts as over (no delivery, capture or release); checkout warns when deadline + review window outlasts the 29-day hold; files flagged for review block the seller's own capture; an objection must name a requirement.
+- Holds: a hold past PayPal's expiry time counts as over (no delivery, capture or release); checkout warns when deadline + review window outlasts the 29-day hold; files flagged for review, and agreed items code cannot check (only the buyer can confirm them), block the seller's own capture; optional fields never agreed (no deadline, no revision count) do not; an objection must name a requirement. PayPal capture is most likely to succeed within the first three days of authorization, so the seller's capture after the 5-day review period can fail and is recorded if it does. The payment terms are written once in `src/lib/payment-terms.ts`; one agreement status (`src/lib/agreement-status.ts`) drives the page and the export, and reads Complete only when PayPal confirmed the capture, the buyer accepted the latest delivery and no objection is open.

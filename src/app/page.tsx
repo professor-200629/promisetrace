@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/session";
+import { env } from "@/lib/env";
+import { paymentTerms } from "@/lib/payment-terms";
 
 export default async function Home() {
   if (await currentUser()) redirect("/deals");
+  const terms = paymentTerms(env().REVIEW_WINDOW_DAYS);
   return (
     <div className="space-y-12">
       <section className="max-w-3xl pt-6">
@@ -22,7 +25,7 @@ export default async function Home() {
         {[
           ["1. Paste the brief", "AI proposes deliverables, formats, price, deadline and revisions. Every claim must quote the source, or it stays unknown."],
           ["2. Both approve", "Seller and buyer approve the same version. Any edit before payment creates a new version and resets approvals."],
-          ["3. Pay with PayPal, held until accepted", "Checkout is created on the server from the approved price. PayPal holds the money; it is captured only when the buyer accepts the delivery."],
+          ["3. Pay with PayPal: held, not taken", `Checkout is created on the server from the approved price. ${terms.short}`],
           ["4. Deliver and review", "Uploads are checked by code for promised formats, counts and the deadline. The buyer accepts, asks for a revision or objects."],
         ].map(([t, d]) => (
           <li key={t} className="rounded-xl border border-line bg-white p-4">

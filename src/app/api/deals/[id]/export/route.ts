@@ -5,7 +5,10 @@ import { renderEvidenceHtml } from "@/lib/export-html";
 
 export const GET = route<{ params: Promise<{ id: string }> }>(async (req, ctx, userId) => {
   const { id } = await ctx.params;
-  const format = new URL(req.url).searchParams.get("format") === "json" ? "json" : "html";
+  const search = new URL(req.url).searchParams;
+  const format = search.get("format") === "json" ? "json" : "html";
+  // ?view=1 opens the HTML record in the browser instead of downloading it. Same content, same strict CSP.
+  const disposition = search.get("view") === "1" ? "inline" : "attachment";
   const view = await buildDealView(prisma, id, userId);
   const record = evidenceJson(view);
   const stamp = new Date().toISOString().slice(0, 10);
@@ -18,7 +21,7 @@ export const GET = route<{ params: Promise<{ id: string }> }>(async (req, ctx, u
   return new Response(renderEvidenceHtml(record), {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${base}.html"`,
+      "Content-Disposition": `${disposition}; filename="${base}.html"`,
       "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
       "Cache-Control": "private, no-store",
     },
