@@ -185,6 +185,23 @@ Changes: an agreed deliverable code cannot check (a format it cannot identify, s
 - `npm run paypal:verify` against `live-check.db`: "MATCH: PayPal confirms this capture exactly as recorded"; authorization `55N55534VG1221826` CAPTURED.
 - In the first run (order `46C45660UE194012S`, capture `94E8982997650240E` COMPLETED, also verified), Claude also extracted an agreed "Colour palette suggestion" with no format or count. It showed as *Buyer to confirm*, and only the buyer's acceptance captured the payment. After acceptance it read *Confirmed by buyer*.
 
+## 5g. Hosted journey on the deployed fixes — 11 Nov 2026, 16:34–16:37 UTC
+
+Commit `852c3d4` deployed to Vercel production (`dpl_7Tq5cCc7EAbUjNAjZChqPSVuDcUq`, aliases promisetrace-sandbox.vercel.app and promisetrace.vercel.app) with `vercel deploy --prod` from a clean checkout of that commit. No schema change; the hosted Turso database was not reset. `/api/health` → `{"status":"ok","db":"ok","paypal":"ready","ai":"ready"}`.
+
+Signed-out checks (fresh browser context, no cookies): the public repository shows `852c3d4`, the MIT license and the judge section; the hosted landing, About and sign-in pages return 200 and show the shared payment terms; the YouTube video https://youtu.be/wKefoWY4dLE is public, playable, 2:17 long, and played (current time advanced from 3.3 s to 9.4 s).
+
+Hosted journey (`scripts/demo-video/record.mjs` against the hosted demo; fictional demo accounts; PayPal's published test Mastercard; deal `cmwcc9s86000008jvautvwjzb`):
+
+1. Live Claude extraction on Vercel: `claude-opus-5-5`, OK, 3,069 in + 468 out tokens (~$0.022), 5.1 s.
+2. Both approved version 1; the buyer saw the payment terms card before paying.
+3. PayPal sandbox authorization: order `9LN41894H5994870E`, authorization `03X03227TR640973L` CREATED, 300.00 USD held, expires 2026-12-10 16:35 UTC.
+4. Delivery 1 without the SVG → *Final logo files: SVG — Not met*; the seller's Payment tab: "1 requirement is not met or flagged for review. Only the buyer's acceptance can capture now." (no capture button).
+5. Buyer reported the problem against D2 → delivery 2 with the SVG → every checkable item met.
+6. Buyer accepted → capture `1H742298KM041083K` **COMPLETED**, 300.00 / 14.16 / 285.84 USD, trigger BUYER_ACCEPTED → objection withdrawn → **Complete** (6 of 6 requirements met) → *View evidence record* returned 200 and showed "Status: Complete".
+7. Signed webhooks received and self-verified on the hosted app (`verified = 1`, SELF, APPLIED): `CHECKOUT.ORDER.APPROVED`, `PAYMENT.AUTHORIZATION.CREATED`, `PAYMENT.CAPTURE.COMPLETED`.
+8. `npm run paypal:verify` against the hosted database: authorization `03X03227TR640973L` CAPTURED; capture COMPLETED with our `invoice_id` and `custom_id` → **MATCH**. History: 19 entries, hash chain intact.
+
 ## 6. Live AI
 
 | Run | Status |

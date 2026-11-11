@@ -64,7 +64,7 @@ The server enforces these rules (`src/lib/hold-rules.ts`); the wording lives in 
 | **Live PayPal sandbox payment** | Passed 8 Nov (guest card checkout, capture COMPLETED, re-verified via API) | [docs/VERIFICATION.md](docs/VERIFICATION.md), [sample record](docs/sample-evidence/) |
 | **Real Claude extraction** | Live run passed 8 Nov | `npm run ai:check`, [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Delivery checks, buyer actions, evidence export | Built | tests + Playwright journey |
-| Buyer-confirm rule, **Complete** state, one set of payment terms | Built 11 Nov; 77 tests + browser journey (fixture); live local sandbox run passed (Claude + hold → capture COMPLETED) | [VERIFICATION 5f](docs/VERIFICATION.md) |
+| Buyer-confirm rule, **Complete** state, one set of payment terms | Built 11 Nov; 77 tests + browser journey (fixture); live runs passed locally and on the **hosted demo** (Claude + hold → missing SVG → corrected delivery → acceptance → capture COMPLETED → Complete, signed webhooks verified) | [VERIFICATION 5f–5g](docs/VERIFICATION.md) |
 | Browser journey (fixture mode) | Passing | `tests/e2e/journey.spec.ts` |
 | Synthetic extraction benchmark | Baseline + 2 Claude runs (precision 1.00, recall 0.95–0.97) | [docs/EVALUATION.md](docs/EVALUATION.md) |
 | Customer interviews | **Not done** — script only | [docs/INTERVIEW_SCRIPT.md](docs/INTERVIEW_SCRIPT.md) |
